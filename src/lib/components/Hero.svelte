@@ -34,7 +34,7 @@
 	<iframe
 		use:hideLabel
 		use:sendHeroParams
-		src="/proposal-weeknd-1.html"
+		src="/event-horizon.html"
 		title="Event Horizon"
 	></iframe>
 	<div class="overlay"></div>

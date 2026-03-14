@@ -344,12 +344,11 @@ void main() {
             vec3 hit = mix(pos, p1, t);
             vec4 dc = shadeDisk(hit, vel, u_time * u_rotationSpeed);
             dc.rgb *= u_diskIntensity;
-            // Photon ring: rays crossing 2+ times grazed the photon sphere
-            // Boost brightness but keep secondary image thinner/dimmer
-            if (diskCrossings >= 1) {
-                float ringBoost = 1.5; // moderate boost (was 3.5+)
-                dc.rgb *= ringBoost;
-                dc.a = min(dc.a * 1.2, 0.95);
+            // 1st & 2nd crossings: full (primary disk + secondary image)
+            // 3rd+ crossings: heavily attenuated (these create the crispy 1px photon ring)
+            if (diskCrossings >= 2) {
+                dc.rgb *= 0.15;
+                dc.a *= 0.15;
             }
             // Alpha-over compositing
             diskAccum.rgb += dc.rgb * dc.a * (1.0 - diskAccum.a);
@@ -360,11 +359,11 @@ void main() {
             diskCrossings++;
         }
 
-        // ── Photon sphere glow (single soft component) ──
+        // ── Soft ambient glow near BH (very diffuse, no sharp peak) ──
         float pDist = abs(r1 - 1.5 * RS);
-        // Smooth wide glow — no sharp narrow component
-        float psGlow = exp(-pDist * 4.0) * h * 0.003 / max(r1 * r1, 0.1);
-        glow += vec3(0.9, 0.7, 0.4) * psGlow;
+        // Use squared distance to spread glow wider and prevent accumulation spikes
+        float psGlow = 1.0 / (1.0 + pDist * pDist * 20.0) * h * 0.001 / max(r1 * r1, 0.2);
+        glow += vec3(0.8, 0.6, 0.35) * psGlow;
 
         // ── Event horizon proximity glow ──
         float hzGlow = exp(-(r1 - RS) * 3.5) * h * 0.003;
@@ -394,8 +393,8 @@ void main() {
     // Soft wide chromatic bands: red/orange outside, blue inside
     // No center "white ring" — purely spectral separation
     float baseChroma = 0.1 + 0.5 * chromo;
-    float spread = 0.07 + 0.15 * chromo;
-    float falloff = 35.0 + 25.0 * (1.0 - chromo);
+    float spread = 0.08 + 0.18 * chromo;
+    float falloff = 20.0 + 15.0 * (1.0 - chromo); // wider/softer bands
     float rRing = exp(-(ringDist + spread) * (ringDist + spread) * falloff);
     float bRing = exp(-(ringDist - spread) * (ringDist - spread) * falloff);
     col.r += rRing * 0.3 * baseChroma;

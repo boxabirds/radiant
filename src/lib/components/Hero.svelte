@@ -1,4 +1,16 @@
 <script lang="ts">
+	import { colorSchemes, type ColorScheme } from '$lib/color-schemes';
+
+	let {
+		scheme = colorSchemes[0],
+		visible = true,
+		onschemechange
+	}: {
+		scheme?: ColorScheme;
+		visible?: boolean;
+		onschemechange?: (s: ColorScheme) => void;
+	} = $props();
+
 	let iframeEl: HTMLIFrameElement;
 	let chromatic = $state(0);
 	let intensity = $state(1.0);
@@ -100,12 +112,15 @@
 </script>
 
 <section class="hero" class:dragging onmousedown={onMouseDown} onmousemove={onMouseMove} onmouseup={onMouseUp} onmouseleave={onMouseUp}>
-	<iframe
-		use:hideLabel
-		use:sendHeroParams
-		src="/event-horizon.html"
-		title="Event Horizon"
-	></iframe>
+	{#if visible}
+		<iframe
+			use:hideLabel
+			use:sendHeroParams
+			src="/event-horizon.html"
+			title="Event Horizon"
+			style:filter={scheme.filter}
+		></iframe>
+	{/if}
 	<div class="overlay"></div>
 	<div class="content">
 		<h1>Radiant</h1>
@@ -116,6 +131,18 @@
 		</div>
 	</div>
 	<div class="controls">
+		<div class="schemes">
+			{#each colorSchemes as s}
+				<button
+					class="scheme-dot"
+					class:active={scheme.id === s.id}
+					style:background={s.swatch}
+					title={s.name}
+					onclick={() => onschemechange?.(s)}
+				></button>
+			{/each}
+		</div>
+		<div class="divider"></div>
 		<label class="control">
 			<span>Chromatic</span>
 			<input type="range" min="0" max="1" step="0.02" value={chromatic} oninput={onChromatic} />
@@ -276,6 +303,32 @@
 		border: none;
 		border-radius: 50%;
 		cursor: pointer;
+	}
+	.schemes {
+		display: flex;
+		gap: 0.4rem;
+		align-items: center;
+	}
+	.scheme-dot {
+		width: 14px;
+		height: 14px;
+		border-radius: 50%;
+		border: 2px solid transparent;
+		cursor: pointer;
+		transition: border-color 0.2s, transform 0.15s;
+		padding: 0;
+	}
+	.scheme-dot:hover {
+		transform: scale(1.2);
+	}
+	.scheme-dot.active {
+		border-color: rgba(255, 255, 255, 0.7);
+	}
+	.divider {
+		width: 1px;
+		height: 16px;
+		background: rgba(200, 149, 108, 0.2);
+		flex-shrink: 0;
 	}
 	.hint {
 		font-size: 0.55rem;

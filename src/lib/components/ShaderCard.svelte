@@ -2,7 +2,7 @@
 	import { getShaderNumber, type Shader } from '$lib/shaders';
 	import { onMount } from 'svelte';
 
-	let { shader, active = false }: { shader: Shader; active?: boolean } = $props();
+	let { shader, active = false, filter = 'none' }: { shader: Shader; active?: boolean; filter?: string } = $props();
 
 	const number = $derived(getShaderNumber(shader));
 
@@ -90,7 +90,7 @@
 </script>
 
 <a class="card" href="/shader/{shader.id}" use:observe>
-	<div class="card-preview" class:inactive={!active}>
+	<div class="card-preview" class:inactive={!active} style:filter={active ? filter : undefined}>
 		{#if posterUrl}
 			<img src={posterUrl} alt={shader.title} class="poster" />
 		{/if}

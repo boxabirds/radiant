@@ -163,6 +163,18 @@ export const shaders: Shader[] = [
 		]
 	},
 	{
+		id: 'prism-light',
+		file: 'proposal-dua-1.html',
+		title: 'Prism Light',
+		desc: 'Light refracting through an invisible prism, casting vivid spectral caustic bands with chromatic bloom and sparkle.',
+		inspiration: 'Dua Lipa',
+		tags: ['fill', 'noise'],
+		params: [
+			{ name: 'SWEEP_SPEED', label: 'Sweep Speed', min: 0.1, max: 1.5, step: 0.05, default: 0.4 },
+			{ name: 'BRILLIANCE', label: 'Brilliance', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
+		]
+	},
+	{
 		id: 'mirror-ball',
 		file: 'mirror-ball.html',
 		title: 'Mirror Ball',
@@ -472,8 +484,8 @@ export const shaders: Shader[] = [
 		],
 		heroConfig: {
 			params: [
-				{ name: 'BH_CENTER_X', value: 0.62 },
-				{ name: 'BH_CENTER_Y', value: 0.42 },
+				{ name: 'BH_CENTER_X', value: 0.68 },
+				{ name: 'BH_CENTER_Y', value: 0.45 },
 				{ name: 'BH_SCALE', value: 2.4 }
 			]
 		}

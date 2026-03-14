@@ -16,9 +16,11 @@
 	/** Sends heroConfig params to reposition the black hole. */
 	function sendHeroParams(node: HTMLIFrameElement) {
 		const params = [
-			{ name: 'BH_CENTER_X', value: 0.62 },
-			{ name: 'BH_CENTER_Y', value: 0.42 },
-			{ name: 'BH_SCALE', value: 2.4 }
+			{ name: 'BH_CENTER_X', value: 0.68 },
+			{ name: 'BH_CENTER_Y', value: 0.45 },
+			{ name: 'BH_SCALE', value: 2.4 },
+			{ name: 'DISK_INTENSITY', value: 1.0 },
+			{ name: 'ROTATION_SPEED', value: 0.3 }
 		];
 		function onLoad() {
 			for (const p of params) {

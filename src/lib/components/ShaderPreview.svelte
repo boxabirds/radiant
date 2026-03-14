@@ -24,7 +24,7 @@
 				if (!doc.getElementById('fps-counter')) {
 					const el = doc.createElement('div');
 					el.id = 'fps-counter';
-					el.style.cssText = 'position:fixed;bottom:8px;right:10px;font:10px/1 monospace;color:rgba(200,149,108,0.4);z-index:99;pointer-events:none;';
+					el.style.cssText = 'position:fixed;top:8px;right:10px;font:10px/1 monospace;color:rgba(200,149,108,0.4);z-index:99;pointer-events:none;';
 					doc.body.appendChild(el);
 					const script = doc.createElement('script');
 					script.textContent = `(function(){var f=0,lt=performance.now(),el=document.getElementById('fps-counter');function t(){f++;var n=performance.now();if(n-lt>=1000){el.textContent=f+" fps";f=0;lt=n;}requestAnimationFrame(t);}requestAnimationFrame(t);})();`;

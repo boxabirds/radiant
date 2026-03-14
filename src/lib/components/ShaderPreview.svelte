@@ -28,10 +28,50 @@
 			}
 		};
 	}
+
+	/** Sends heroConfig params to the iframe once it loads. */
+	function sendHeroParams(node: HTMLIFrameElement) {
+		if (!shader.heroConfig) return { destroy() {} };
+		const params = shader.heroConfig.params;
+		function onLoad() {
+			for (const p of params) {
+				node.contentWindow?.postMessage({ type: 'param', name: p.name, value: p.value }, '*');
+			}
+		}
+		node.addEventListener('load', onLoad);
+		return {
+			destroy() {
+				node.removeEventListener('load', onLoad);
+			}
+		};
+	}
+
+	const hasCustomHero = !!shader.heroConfig;
 </script>
 
 <div class="preview layout-{layout}">
-	{#if layout === 'hero'}
+	{#if layout === 'hero' && hasCustomHero}
+		<div class="mock-layout hero-custom-layout">
+			<iframe use:hideLabel use:sendHeroParams src="/{shader.file}" title={shader.title} style:filter></iframe>
+			<div class="hero-custom-overlay">
+				<div class="mock-nav">
+					<span class="mock-logo">acme</span>
+					<span class="mock-links">
+						<span>Features</span>
+						<span>Pricing</span>
+						<span>About</span>
+					</span>
+				</div>
+				<div class="hero-body">
+					<div class="mock-content">
+						<h2>Your next big idea starts here</h2>
+						<p>A beautiful landing page with a generative shader that makes your product stand out.</p>
+						<div class="mock-btn">Get Started</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	{:else if layout === 'hero'}
 		<div class="mock-layout hero-layout">
 			<div class="mock-nav">
 				<span class="mock-logo">acme</span>
@@ -153,6 +193,31 @@
 		inset: 0;
 		width: 100%;
 		height: 100%;
+	}
+
+	/* Custom hero layout: full-viewport shader with content overlaid */
+	.hero-custom-layout {
+		background: #0a0a0a;
+	}
+	.hero-custom-layout > iframe {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+	}
+	.hero-custom-overlay {
+		position: relative;
+		z-index: 1;
+		display: flex;
+		flex-direction: column;
+		height: 100%;
+	}
+	.hero-custom-overlay .mock-nav {
+		border-bottom-color: rgba(200, 149, 108, 0.1);
+	}
+	.hero-custom-overlay .hero-body {
+		flex: 1;
+		min-height: 0;
 	}
 
 	/* Background layout: shader behind content, strong darkening */

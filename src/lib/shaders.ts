@@ -29,6 +29,10 @@ export interface Shader {
 	inspiration?: string;
 	credit?: string;
 	creditUrl?: string;
+	/** Custom hero layout: shader runs full-viewport with params to reposition the focal element */
+	heroConfig?: {
+		params: { name: string; value: number }[];
+	};
 }
 
 export const shaders: Shader[] = [
@@ -123,18 +127,6 @@ export const shaders: Shader[] = [
 		]
 	},
 	{
-		id: 'satin-ripple',
-		file: 'satin-ripple.html',
-		title: 'Satin Ripple',
-		desc: 'Flowing rose-gold satin fabric with sweeping folds and anisotropic specular sheen.',
-		inspiration: 'Sabrina Carpenter',
-		tags: ['fill', 'organic'],
-		params: [
-			{ name: 'RIPPLE_SPEED', label: 'Ripple Speed', min: 0.1, max: 2.0, step: 0.05, default: 0.6 },
-			{ name: 'SHEEN_INTENSITY', label: 'Sheen Intensity', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
-		]
-	},
-	{
 		id: 'sugar-glass',
 		file: 'sugar-glass.html',
 		title: 'Sugar Glass',
@@ -171,18 +163,6 @@ export const shaders: Shader[] = [
 		]
 	},
 	{
-		id: 'bossa-nova-drift',
-		file: 'bossa-nova-drift.html',
-		title: 'Bossa Nova Drift',
-		desc: 'Syncopated sine wave interference creating drifting moiré patterns with polyrhythmic timing.',
-		inspiration: 'Laufey',
-		tags: ['fill', 'geometric'],
-		params: [
-			{ name: 'WAVE_COMPLEXITY', label: 'Wave Complexity', min: 2, max: 8, step: 1, default: 5 },
-			{ name: 'DRIFT_SPEED', label: 'Drift Speed', min: 0.1, max: 1.5, step: 0.05, default: 0.4 }
-		]
-	},
-	{
 		id: 'mirror-ball',
 		file: 'mirror-ball.html',
 		title: 'Mirror Ball',
@@ -204,18 +184,6 @@ export const shaders: Shader[] = [
 		params: [
 			{ name: 'SWEEP_SPEED', label: 'Sweep Speed', min: 0.1, max: 2.0, step: 0.05, default: 0.5 },
 			{ name: 'BEAM_INTENSITY', label: 'Beam Intensity', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
-		]
-	},
-	{
-		id: 'light-corridor',
-		file: 'light-corridor.html',
-		title: 'Light Corridor',
-		desc: 'Infinite neon tunnel with alternating magenta and cyan rings receding to a vanishing point.',
-		inspiration: 'Dua Lipa',
-		tags: ['fill', 'geometric'],
-		params: [
-			{ name: 'TUNNEL_SPEED', label: 'Tunnel Speed', min: 0.1, max: 2.0, step: 0.05, default: 0.5 },
-			{ name: 'COLOR_CYCLE', label: 'Color Cycle', min: 0.1, max: 2.0, step: 0.05, default: 0.5 }
 		]
 	},
 	{
@@ -279,18 +247,6 @@ export const shaders: Shader[] = [
 		]
 	},
 	{
-		id: 'honeycomb-pulse',
-		file: 'honeycomb-pulse.html',
-		title: 'Honeycomb Pulse',
-		desc: 'Hexagonal grid with cascading golden light waves creating interference patterns across cells.',
-		inspiration: 'Beyoncé',
-		tags: ['fill', 'geometric'],
-		params: [
-			{ name: 'WAVE_SPEED', label: 'Wave Speed', min: 0.1, max: 2.0, step: 0.05, default: 0.5 },
-			{ name: 'CELL_SIZE', label: 'Cell Size', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
-		]
-	},
-	{
 		id: 'gilt-mosaic',
 		file: 'gilt-mosaic.html',
 		title: 'Gilt Mosaic',
@@ -327,18 +283,6 @@ export const shaders: Shader[] = [
 		]
 	},
 	{
-		id: 'velvet-cascade',
-		file: 'velvet-cascade.html',
-		title: 'Velvet Cascade',
-		desc: 'Flowing dark velvet fabric with golden candlelight sheen and undulating folds.',
-		inspiration: 'Adele',
-		tags: ['fill', 'noise', 'organic'],
-		params: [
-			{ name: 'FLOW_SPEED', label: 'Flow Speed', min: 0.05, max: 1.0, step: 0.05, default: 0.3 },
-			{ name: 'SHEEN_INTENSITY', label: 'Sheen Intensity', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
-		]
-	},
-	{
 		id: 'smoke-and-gold',
 		file: 'smoke-and-gold.html',
 		title: 'Smoke & Gold',
@@ -372,18 +316,6 @@ export const shaders: Shader[] = [
 		params: [
 			{ name: 'DRIP_SPEED', label: 'Drip Speed', min: 0.1, max: 1.5, step: 0.05, default: 0.5 },
 			{ name: 'BLOB_COUNT', label: 'Blob Count', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
-		]
-	},
-	{
-		id: 'chrome-drip',
-		file: 'chrome-drip.html',
-		title: 'Chrome Drip',
-		desc: 'Liquid chrome surface with metallic specular highlights and organic pooling flow.',
-		inspiration: 'Bad Bunny',
-		tags: ['fill', 'noise'],
-		params: [
-			{ name: 'FLOW_SPEED', label: 'Flow Speed', min: 0.05, max: 1.0, step: 0.05, default: 0.3 },
-			{ name: 'REFLECTIVITY', label: 'Reflectivity', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
 		]
 	},
 	{
@@ -435,18 +367,6 @@ export const shaders: Shader[] = [
 		]
 	},
 	{
-		id: 'canopy-light',
-		file: 'canopy-light.html',
-		title: 'Canopy Light',
-		desc: 'Dappled golden sunlight filtering through layered forest canopy with wind-driven sway.',
-		inspiration: 'SZA',
-		tags: ['fill', 'noise', 'organic'],
-		params: [
-			{ name: 'WIND_SPEED', label: 'Wind Speed', min: 0.1, max: 1.5, step: 0.05, default: 0.5 },
-			{ name: 'LIGHT_DENSITY', label: 'Light Density', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
-		]
-	},
-	{
 		id: 'diamond-caustics',
 		file: 'diamond-caustics.html',
 		title: 'Diamond Caustics',
@@ -456,18 +376,6 @@ export const shaders: Shader[] = [
 		params: [
 			{ name: 'ROTATION_SPEED', label: 'Rotation Speed', min: 0.1, max: 2.0, step: 0.05, default: 0.5 },
 			{ name: 'BRILLIANCE', label: 'Brilliance', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
-		]
-	},
-	{
-		id: 'obsidian-flow',
-		file: 'obsidian-flow.html',
-		title: 'Obsidian Flow',
-		desc: 'Volcanic glass surface with domain-warped ridges and razor-sharp golden specular catches.',
-		inspiration: 'Rihanna',
-		tags: ['fill', 'noise', 'organic'],
-		params: [
-			{ name: 'FLOW_SPEED', label: 'Flow Speed', min: 0.05, max: 1.0, step: 0.05, default: 0.3 },
-			{ name: 'GLINT_SHARPNESS', label: 'Glint Sharpness', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
 		]
 	},
 	{
@@ -536,15 +444,61 @@ export const shaders: Shader[] = [
 		]
 	},
 	{
-		id: 'after-hours',
-		file: 'after-hours.html',
-		title: 'After Hours',
-		desc: 'Cinematic city bokeh lights with depth layers, rain streaks, and lens flares.',
-		inspiration: 'The Weeknd',
-		tags: ['fill', 'particles'],
+		id: 'gilt-thread',
+		file: 'proposal-bruno-4.html',
+		title: 'Gilt Thread',
+		desc: 'Golden threads tracing intricate parametric curves with metallic sheen and sparkle tips.',
+		inspiration: 'Bruno Mars',
+		tags: ['object', 'geometric'],
 		params: [
-			{ name: 'BOKEH_COUNT', label: 'Bokeh Count', min: 20, max: 120, step: 5, default: 60 },
-			{ name: 'DRIFT_SPEED', label: 'Drift Speed', min: 0.1, max: 1.5, step: 0.05, default: 0.5 }
+			{ name: 'SHAPE', label: 'Shape', min: 1, max: 4, step: 1, default: 1 },
+			{ name: 'DRAW_SPEED', label: 'Draw Speed', min: 0.3, max: 3.0, step: 0.1, default: 1.0 },
+			{ name: 'THREAD_COUNT', label: 'Thread Count', min: 2, max: 8, step: 1, default: 5 }
+		]
+	},
+	{
+		id: 'event-horizon',
+		file: 'proposal-weeknd-1.html',
+		title: 'Event Horizon',
+		desc: 'Physics-based black hole with raytraced gravitational lensing, volumetric accretion disk, and Doppler beaming.',
+		inspiration: 'The Weeknd',
+		tags: ['object', 'physics'],
+		params: [
+			{ name: 'ROTATION_SPEED', label: 'Rotation Speed', min: 0.05, max: 1.0, step: 0.05, default: 0.3 },
+			{ name: 'DISK_INTENSITY', label: 'Disk Intensity', min: 0.3, max: 2.0, step: 0.1, default: 1.0 },
+			{ name: 'TILT', label: 'Tilt', min: -1.5, max: 1.5, step: 0.05, default: 0.0 },
+			{ name: 'ROTATE', label: 'Rotate', min: -3.14, max: 3.14, step: 0.05, default: 0.0 }
+		],
+		heroConfig: {
+			params: [
+				{ name: 'BH_CENTER_X', value: 0.62 },
+				{ name: 'BH_CENTER_Y', value: 0.42 },
+				{ name: 'BH_SCALE', value: 2.4 }
+			]
+		}
+	},
+	{
+		id: 'burning-film',
+		file: 'proposal-weeknd-2.html',
+		title: 'Burning Film',
+		desc: 'Celluloid film stock catching fire with spreading amber burn holes, glowing edges, and ember field.',
+		inspiration: 'The Weeknd',
+		tags: ['fill', 'noise'],
+		params: [
+			{ name: 'BURN_SPEED', label: 'Burn Speed', min: 0.1, max: 1.5, step: 0.05, default: 0.5 },
+			{ name: 'EMBER_GLOW', label: 'Ember Glow', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
+		]
+	},
+	{
+		id: 'vertigo',
+		file: 'proposal-weeknd-4.html',
+		title: 'Vertigo',
+		desc: 'Slow hypnotic tunnel with crimson ring segments, wave-based illumination, and dark void center.',
+		inspiration: 'The Weeknd',
+		tags: ['fill', 'geometric'],
+		params: [
+			{ name: 'TUNNEL_SPEED', label: 'Tunnel Speed', min: 0.1, max: 1.5, step: 0.05, default: 0.5 },
+			{ name: 'SPIRAL_INTENSITY', label: 'Spiral', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
 		]
 	},
 	{
@@ -989,6 +943,66 @@ export const shaders: Shader[] = [
 		params: [
 			{ name: 'GLITCH_INTENSITY', label: 'Glitch Intensity', min: 0.1, max: 1.0, step: 0.05, default: 0.5 },
 			{ name: 'MELT_SPEED', label: 'Melt Speed', min: 0.1, max: 1.5, step: 0.05, default: 0.5 }
+		]
+	},
+	{
+		id: 'torn-paper',
+		file: 'proposal-olivia-1.html',
+		title: 'Torn Paper',
+		desc: 'Paper surface tearing apart with fibrous edges revealing warm volumetric light underneath, then reforming.',
+		inspiration: 'Olivia Rodrigo',
+		tags: ['fill', 'noise', 'organic'],
+		params: [
+			{ name: 'TEAR_SPEED', label: 'Tear Speed', min: 0.3, max: 3.0, step: 0.1, default: 1.0 },
+			{ name: 'GLOW_INTENSITY', label: 'Glow Intensity', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
+		]
+	},
+	{
+		id: 'polaroid-burn',
+		file: 'proposal-olivia-2.html',
+		title: 'Polaroid Burn',
+		desc: 'Scattered polaroid photos developing warm abstract memories, overexposing, and burning out with ember edges.',
+		inspiration: 'Olivia Rodrigo',
+		tags: ['fill', 'noise'],
+		params: [
+			{ name: 'BURN_SPEED', label: 'Burn Speed', min: 0.2, max: 2.0, step: 0.05, default: 0.6 },
+			{ name: 'PHOTO_COUNT', label: 'Photo Count', min: 3, max: 8, step: 1, default: 5 }
+		]
+	},
+	{
+		id: 'sticker-peel',
+		file: 'proposal-olivia-3.html',
+		title: 'Sticker Peel',
+		desc: 'Holographic sticker rectangles peeling up to reveal chrome metallic undersides with iridescent color shifting.',
+		inspiration: 'Olivia Rodrigo',
+		tags: ['fill', 'geometric'],
+		params: [
+			{ name: 'PEEL_SPEED', label: 'Peel Speed', min: 0.2, max: 2.0, step: 0.05, default: 0.5 },
+			{ name: 'IRIDESCENCE', label: 'Iridescence', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
+		]
+	},
+	{
+		id: 'scream-wave',
+		file: 'proposal-olivia-4.html',
+		title: 'Scream Wave',
+		desc: 'Glowing waveform building from gentle sine to distorted scream with chromatic aberration and collapse.',
+		inspiration: 'Olivia Rodrigo',
+		tags: ['object', 'physics'],
+		params: [
+			{ name: 'INTENSITY', label: 'Intensity', min: 0.3, max: 2.0, step: 0.1, default: 1.0 },
+			{ name: 'WAVE_SPEED', label: 'Wave Speed', min: 0.3, max: 2.0, step: 0.1, default: 0.8 }
+		]
+	},
+	{
+		id: 'wax-seal',
+		file: 'proposal-olivia-5.html',
+		title: 'Wax Seal',
+		desc: 'Molten crimson wax dripping and pooling with metaball merging, cooling to dark matte with glowing cracks.',
+		inspiration: 'Olivia Rodrigo',
+		tags: ['object', 'organic', 'physics'],
+		params: [
+			{ name: 'DRIP_RATE', label: 'Drip Rate', min: 0.3, max: 2.0, step: 0.1, default: 0.7 },
+			{ name: 'WAX_HEAT', label: 'Wax Heat', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
 		]
 	}
 ];

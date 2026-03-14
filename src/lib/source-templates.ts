@@ -22,6 +22,9 @@ export function generateLayoutSource(
 
 	switch (layout) {
 		case 'hero':
+			if (shader.heroConfig) {
+				return heroCustomTemplate(shader, shaderEmbed, filterStyle);
+			}
 			return heroTemplate(shader, shaderEmbed, filterStyle);
 		case 'background':
 			return backgroundTemplate(shader, shaderEmbed, filterStyle);
@@ -165,6 +168,124 @@ function heroTemplate(shader: Shader, shaderEmbed: string, filterStyle: string):
   <script>
     document.getElementById('shader').srcdoc = \`${shaderEmbed}\`;
   </script>
+</body>
+</html>`;
+}
+
+function heroCustomTemplate(shader: Shader, shaderEmbed: string, filterStyle: string): string {
+	const params = shader.heroConfig!.params;
+	const paramMessages = params
+		.map((p) => `      frame.contentWindow.postMessage({ type: 'param', name: '${p.name}', value: ${p.value} }, '*');`)
+		.join('\n');
+	return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hero — ${shader.title}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0a;
+    color: #e8e0d8;
+    font-family: system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+  .shader-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+  }
+  .shader-bg iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+  }
+  .page {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 3rem;
+  }
+  nav .logo { font-weight: 600; color: #c8956c; letter-spacing: 0.05em; }
+  nav .links { display: flex; gap: 2rem; font-size: 0.9rem; color: rgba(232,224,216,0.5); }
+  nav .links a { color: inherit; text-decoration: none; }
+
+  .hero {
+    display: flex;
+    align-items: center;
+    gap: 3rem;
+    padding: 3rem;
+    max-width: 600px;
+    flex: 1;
+  }
+  .hero-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .hero-content h1 {
+    font-size: 2.5rem;
+    font-weight: 500;
+    line-height: 1.2;
+    margin-bottom: 1rem;
+  }
+  .hero-content p {
+    color: rgba(232,224,216,0.5);
+    line-height: 1.6;
+    max-width: 36ch;
+  }
+  .hero-content .btn {
+    display: inline-block;
+    margin-top: 1.5rem;
+    padding: 0.75rem 1.5rem;
+    background: #c8956c;
+    color: #0a0a0a;
+    border-radius: 6px;
+    font-weight: 500;
+    text-decoration: none;
+  }
+</style>
+</head>
+<body>
+  <div class="shader-bg">
+    <iframe id="shader"${filterStyle}></iframe>
+  </div>
+  <div class="page">
+    <nav>
+      <div class="logo">acme</div>
+      <div class="links">
+        <a href="#">Features</a>
+        <a href="#">Pricing</a>
+        <a href="#">About</a>
+      </div>
+    </nav>
+    <section class="hero">
+      <div class="hero-content">
+        <h1>Your next big idea starts here</h1>
+        <p>A beautiful landing page with a generative shader that makes your product stand out.</p>
+        <a href="#" class="btn">Get Started</a>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    var frame = document.getElementById('shader');
+    frame.srcdoc = \`${shaderEmbed}\`;
+    frame.addEventListener('load', function() {
+${paramMessages}
+    });
+  <\\/script>
 </body>
 </html>`;
 }

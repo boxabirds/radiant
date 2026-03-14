@@ -74,7 +74,7 @@
 
 	<div class="main">
 		<header>
-			<a href="/" class="back">&larr; Gallery</a>
+			<a href="/#gallery" class="back">&larr; Gallery</a>
 			<div class="shader-id">{number} — {shader.title}</div>
 		</header>
 		<div class="preview-area">
@@ -198,7 +198,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 0.75rem 1.5rem;
+		padding: calc(var(--nav-height, 56px) + 0.75rem) 1.5rem 0.75rem;
 		border-bottom: 1px solid rgba(200, 149, 108, 0.1);
 		flex-shrink: 0;
 	}

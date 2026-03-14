@@ -502,27 +502,27 @@ export const shaders: Shader[] = [
 		]
 	},
 	{
-		id: 'cloud-kingdom',
-		file: 'cloud-kingdom.html',
-		title: 'Cloud Kingdom',
-		desc: 'Raymarched volumetric clouds with warm internal glow drifting through dark sky.',
+		id: 'stardust-veil',
+		file: 'proposal-ariana-3.html',
+		title: 'Stardust Veil',
+		desc: 'Dense cosmic stardust with parallax depth layers, aurora ribbons, constellation threads, and brightness waves.',
 		inspiration: 'Ariana Grande',
-		tags: ['fill', 'noise', 'organic'],
+		tags: ['fill', 'particles', 'noise'],
 		params: [
-			{ name: 'CLOUD_SPEED', label: 'Cloud Speed', min: 0.05, max: 1.0, step: 0.05, default: 0.3 },
-			{ name: 'CLOUD_DENSITY', label: 'Cloud Density', min: 0.2, max: 1.0, step: 0.05, default: 0.5 }
+			{ name: 'DRIFT_SPEED', label: 'Drift Speed', min: 0.1, max: 1.5, step: 0.05, default: 0.4 },
+			{ name: 'STAR_DENSITY', label: 'Star Density', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
 		]
 	},
 	{
-		id: 'ink-bloom',
-		file: 'ink-bloom.html',
-		title: 'Ink Bloom',
-		desc: 'Symmetric inkblot patterns bleeding and branching with Rorschach symmetry.',
-		inspiration: 'Post Malone',
-		tags: ['fill', 'organic'],
+		id: 'silk-cascade',
+		file: 'proposal-ariana-5.html',
+		title: 'Silk Cascade',
+		desc: 'Flowing layered silk fabric with anisotropic specular highlights, parallax depth, and warm translucent overlap.',
+		inspiration: 'Ariana Grande',
+		tags: ['fill', 'organic', 'noise'],
 		params: [
-			{ name: 'SPREAD_SPEED', label: 'Spread Speed', min: 0.5, max: 4.0, step: 0.1, default: 1.5 },
-			{ name: 'INK_DENSITY', label: 'Ink Density', min: 0.3, max: 1.0, step: 0.05, default: 0.7 }
+			{ name: 'FLOW_SPEED', label: 'Flow Speed', min: 0.1, max: 1.5, step: 0.05, default: 0.4 },
+			{ name: 'SHEEN_INTENSITY', label: 'Sheen Intensity', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
 		]
 	},
 	{

@@ -6,7 +6,99 @@ You are reimagining the shader(s) inspired by **$ARGUMENTS** in this project.
 
 Read `src/lib/shaders.ts` to find the existing shader entry (or entries) for this celebrity. Read the corresponding HTML file(s) in `static/` to understand what currently exists.
 
-Also read 3-4 of the strongest existing shaders for reference on quality bar. The original non-celebrity shaders (01 through 09) are generally strong: flow field, topographic, generative tree, strange attractor, pendulum wave, phyllotaxis, fluid amber. Read at least 2 of those HTML files to calibrate your quality standard.
+Also read 3-4 of the strongest existing shaders for reference on quality bar. Here are the standout shaders that represent the quality we're aiming for — read at least 2-3 of these HTML files to calibrate:
+
+- **flow-field**: Simple physics-based particle trails, but incredibly elegant and beautiful (Canvas 2D)
+- **strange-attractor**: Great standalone 3D object, physics-based, elegant (Canvas 2D)
+- **sequin-wave**: Beautiful inspired texture effect — sophisticated, creative (WebGL)
+- **voltage-arc**: Creative, expressive electric plasma (WebGL)
+- **rain-on-glass / rain-umbrella**: Ultra-realistic, sophisticated, multi-layered with procedural city background (Hybrid: Canvas 2D physics → WebGL refraction)
+- **event-horizon**: Complicated, ultra-realistic black hole with gravitational lensing (WebGL)
+- **crystal-lattice**: Ultra-realistic 3D procedural crystal growth (WebGL)
+- **laser-precision**: Insanely cool special effects with spark particles (Canvas 2D + offscreen buffers)
+- **torn-paper**: Ultra-realistic paper tearing with rich plasma background (WebGL)
+- **gilded-fracture**: Multi-scale kintsugi cracks with molten gold, domain warping, dust particles (WebGL)
+
+## Design Philosophy — CRITICAL
+
+**Capture aesthetics abstractly. Do NOT simulate literal real-world objects.**
+
+Shaders that try to depict recognizable objects (bottles, fire, glass fracture, rust, steel wool) almost always look fake and get rejected, because humans have strong visual priors for how those things look. Instead, capture the *mood/texture/feeling* abstractly.
+
+Successes: Silk Cascade (flowing elegance without literal silk), Stardust Veil (cosmic beauty without literal nebula), Gilded Fracture (abstract kintsugi pattern), Flow Field (pure mathematical beauty).
+
+Failures: Bottle Smash, Steel Wool Spin, Broken Windshield, Tattoo Machine, Rust Bloom — all rejected for looking unconvincing.
+
+**The rule: If someone would say "that doesn't look like a real X", the concept is wrong.** Prefer concepts where there IS no "real X" to compare against.
+
+## Quality Bar
+
+The shaders you build must be **ambitious, rich, and sophisticated**. Past failures have been too basic — a simple sphere, a basic spiral, plain sparkle points. These get rejected.
+
+What makes a great shader:
+- **Multiple visual layers** composited together (not just one effect)
+- **Rich multi-scale detail** (coarse + fine + micro detail)
+- **Animation that tells a story** or has clear phases (not just slowly drifting)
+- **Fills the entire canvas** with interesting detail (not a small object in the center)
+- **Would genuinely work as a website background, hero section, or design asset**
+
+What gets rejected:
+- Simple raymarched sphere with one effect
+- Basic noise patterns or gradients
+- Single-trick shaders without depth or layering
+- "Tech demos" that look academic rather than artistic
+- Static-looking results that barely animate
+- Simulations of real objects that end up looking fake
+- **ANY morbid, visceral, or body-related effects** — no skin, blood, wounds, tattoo needles, body parts. Immediate reject.
+
+## Rendering Techniques — Choose the Right Tool
+
+You are NOT limited to single-pass WebGL fragment shaders. Choose the best technique for each effect:
+
+### Available Techniques (all proven in this project):
+
+1. **Pure WebGL fragment shader** — Best for: full-canvas procedural textures, noise-based effects, SDF rendering. Most shaders use this. Efficient for per-pixel effects but cannot maintain state between frames.
+
+2. **Canvas 2D particle systems** — Best for: elegant particle trails (flow-field), physics simulations (strange-attractor), anything with persistent trails via alpha-fade overlay. Simple, performant, beautiful results. Don't underestimate Canvas 2D — some of the best shaders use it.
+
+3. **Canvas 2D + offscreen buffers** — Best for: persistent effects like burn marks, accumulated trails. laser-precision uses 2 offscreen canvases for persistent scorched trails and heat distortion.
+
+4. **Hybrid Canvas 2D → WebGL** — Best for: simulation + post-processing. rain-on-glass does drop physics in Canvas 2D, uploads as texture to WebGL for refraction shader. Very powerful pattern.
+
+5. **Multi-pass WebGL with ping-pong FBOs** — Best for: **stateful effects that need frame-to-frame persistence**: fluid simulation, reaction-diffusion, cellular automata, trail accumulation, feedback effects. Render to texture A, read from A next frame while writing to B, swap. This is how Shadertoy does its most impressive effects. We haven't used this yet but should — it unlocks a whole class of effects impossible in single-pass.
+
+6. **WebGPU compute shaders** — Best for: massive particle counts (100K+), GPU-side physics. Now shipping in all major browsers (2026). Consider for effects that need huge particle counts. Note: less browser backward-compatibility than WebGL.
+
+### Choosing the right technique:
+- Need persistent trails or state? → Multi-pass WebGL or Canvas 2D with alpha overlay
+- Need beautiful particles with physics? → Canvas 2D (proven elegant results)
+- Need complex per-pixel procedural texture? → Single-pass WebGL fragment shader
+- Need simulation + post-processing? → Hybrid Canvas 2D → WebGL
+- Need massive particle counts? → WebGPU compute (or Canvas 2D with careful limits)
+- **If single-pass fragment shader can't do the effect well, DON'T force it.** Use a different technique.
+
+## Avoiding Technique Bias
+
+There is a natural bias toward certain overused techniques. Be aware and actively diversify:
+
+**OVERUSED — avoid unless truly novel application:**
+- Voronoi / Voronoi edges (we already have gilded-fracture, sugar-glass, tectonic, etc.)
+- Domain-warped FBM noise (we have fluid-amber, obsidian-flow, etc.)
+- Simple metaballs (we have metamorphosis, neon-drip)
+- Basic particle systems
+- Raymarched spheres
+
+**UNDERUSED — actively seek these out:**
+- Physics simulations (spring systems, fluid dynamics, electromagnetic)
+- Procedural 3D scenes (not just a sphere — think environments, structures)
+- Material simulations (fabric, liquid metal, glass, ice)
+- Reaction-diffusion and cellular automata (great with ping-pong buffers!)
+- Optical phenomena (caustics, refraction, diffraction, thin-film)
+- Mechanical/kinetic systems (gears, pendulums, chains)
+- Perspective/3D illusions on a 2D canvas
+- Weather and atmospheric effects
+- Canvas 2D particle systems with elegant physics (flow-field style)
+- Feedback/accumulation effects (ping-pong buffers)
 
 ## Process
 
@@ -22,11 +114,13 @@ Write a short (3-5 sentence) vibe summary.
 ### Step 2: Generate 50 Shader Ideas
 
 Brainstorm 50 shader concepts inspired by this celebrity. Each idea should:
-- Be a technically interesting generative animation (on par with flow fields, strange attractors, fluid simulations, pendulum waves — not just "pretty colors")
-- Have a clear connection to the celebrity's vibe (but abstract/artistic, not literal)
-- Be feasible as a single self-contained HTML file with Canvas 2D or WebGL
-- Have a evocative name (2-3 words)
-- **Have high sharability potential** — think about designers and developers who would want to embed these on their own websites, apps, landing pages, or portfolios. The best shaders are ones people see and immediately think "I need this on my site." Prioritize visual impact, versatility as a background/accent, and broad aesthetic appeal over niche or overly literal concepts.
+- Be a technically interesting generative animation — **ambitious and sophisticated**, using modern and versatile techniques. Think multi-layered compositions, not single effects.
+- **Capture an aesthetic/mood abstractly** — NOT simulate a literal real-world object
+- Be feasible as a single self-contained HTML file (any rendering technique is valid)
+- Have an evocative name (2-3 words)
+- **Have high sharability potential** — designers and developers should want to embed these on their own websites
+- **Actively avoid the overused techniques** listed above unless you have a truly novel take
+- **Never include morbid/visceral/body-related concepts** — no skin, blood, wounds, body parts
 
 Present the full unranked list of 50 with one-line descriptions. Do NOT rank them yet.
 
@@ -35,16 +129,20 @@ Present the full unranked list of 50 with one-line descriptions. Do NOT rank the
 Launch a sub-agent (using the Agent tool) whose sole job is to critically evaluate and rank the 50 ideas from Step 2. The agent should:
 - Consider technical feasibility, visual impact, sharability potential, distinctiveness from each other, and connection to the celebrity's vibe
 - Eliminate ideas that are too similar to existing shaders already in `shaders.ts`
+- **Ruthlessly eliminate ideas that try to simulate literal objects** — these always look fake
+- **Ruthlessly eliminate ideas that use overused techniques** (Voronoi, basic FBM noise, metaballs, simple raymarched objects)
+- **Favor ideas that would require multiple visual layers** and rich detail
+- **Consider which rendering technique best suits each idea** — don't assume everything must be a single-pass fragment shader
 - Pick the **top 5** that are most distinct from each other and would make the strongest set
 - Return the ranked top 5 with a brief justification for each pick
 
-Wait for the agent to complete and use its top 5 selection for the next step. This separation ensures genuine critical reasoning rather than just sorting the same list that was brainstormed.
+Wait for the agent to complete and use its top 5 selection for the next step.
 
 ### Step 3: Build Top 5
 
 Build the top 5 shader ideas (as selected by the ranking agent) as complete, working HTML files. For each:
 
-1. Create the HTML file in `static/` following the existing naming convention (use the existing file number prefix from `shaders.ts` since filenames are already set — if there's only one existing shader for this celeb, create the new ones with temporary filenames like `static/proposal-CELEB-1.html` through `static/proposal-CELEB-5.html`)
+1. Create the HTML file in `static/` following the existing naming convention
 2. Follow the project conventions exactly:
    - Single HTML file: `<style>` + `<canvas id="canvas">` + `<script>` IIFE
    - Dark background (#0a0a0a)
@@ -54,29 +152,31 @@ Build the top 5 shader ideas (as selected by the ranking agent) as complete, wor
    - Support `postMessage` for params: `window.addEventListener('message', ...)`
    - Define 2 tunable params with sensible defaults
    - Canvas fills viewport, handles resize
-3. The animation must be **visually stunning and technically sophisticated**. No simple particle systems or basic noise. Think: interesting algorithms, emergent behavior, mathematical beauty.
-4. Each shader should look DISTINCT from the others — don't make 5 variations of the same idea.
-5. **Design for sharability**: Each shader should work beautifully as a website background, hero section, loading screen, or decorative element. It should look intentional and polished — something a designer would proudly ship. Avoid anything that looks like a tech demo or science experiment. The goal is generative *art* that doubles as a *design asset*.
-6. **Performance is critical**: Every shader must run at a smooth 60fps on normal laptops (e.g. a MacBook Air or mid-range Windows laptop). Optimize aggressively — minimize per-pixel work, avoid expensive loops, use efficient algorithms, cap particle counts, and prefer GPU-friendly approaches (WebGL fragment shaders) over CPU-heavy Canvas 2D when possible. A beautiful shader that stutters is worse than a simpler one that runs buttery smooth.
+3. **Choose the RIGHT rendering technique** for the effect. Don't default to single-pass fragment shaders. If the effect needs trails → use Canvas 2D with alpha overlay or ping-pong buffers. If it needs particles with physics → Canvas 2D might be perfect. If it needs procedural texture → WebGL fragment shader. Match technique to effect.
+4. **The animation must be AMBITIOUS and MULTI-LAYERED.** At least 3-5 distinct visual layers composited together.
+5. Each shader should look DISTINCT from the others.
+6. **Design for sharability**: generative *art* that doubles as a *design asset*.
+7. **Performance is critical**: 60fps on normal laptops. If a technique can't hit 60fps, use a different technique — don't just reduce quality.
 
 ### Step 4: Visual QA via Browser
 
 After building each shader, visually verify it using the Chrome browser automation tools:
 
-1. Open each shader's standalone HTML file in Chrome (e.g. `http://localhost:5174/proposal-CELEB-1.html` or whatever the dev server URL is)
+1. Open each shader's standalone HTML file in Chrome
 2. Take a screenshot and evaluate:
    - **Is it rendering at all?** (not just a black screen or error)
    - **Is it visually interesting?** (not just random noise or a static image)
-   - **Is the animation smooth?** (check console for errors with `mcp__claude-in-chrome__read_console_messages`)
+   - **Is the animation smooth?** (check console for errors)
    - **Does it match the concept?** (does it evoke what was intended?)
-3. If a shader has issues — blank screen, console errors, ugly output, boring result — **fix it and re-check**. Iterate until it looks good.
-4. If after 2-3 fix attempts a shader still isn't working well, scrap it and build the next idea from the ranked list instead.
+   - **Is it RICH enough?** Would this actually impress a designer?
+   - **Does it try to look like a real object and fail?** If so, it needs rethinking.
+3. If a shader has issues, fix and re-check. If after 2-3 attempts it still doesn't work, scrap it.
 
-Do NOT skip this step. Every shader presented to the user must be visually confirmed as working and looking good.
+Do NOT skip this step.
 
 ### Step 5: Register and Present
 
-Add all 5 final (QA-passed) proposals to the `shaders` array in `src/lib/shaders.ts` with appropriate metadata (id, file, title, desc, tags, params, inspiration).
+Add all 5 final (QA-passed) proposals to the `shaders` array in `src/lib/shaders.ts` with appropriate metadata.
 
 Then tell the user:
 - List all 5 proposals with their names and descriptions
@@ -86,8 +186,9 @@ Then tell the user:
 ## Important Notes
 
 - Build all 5 shaders in parallel using agents when possible
-- The quality bar is HIGH — these should be portfolio-worthy generative art pieces that designers and developers would want to use on their own sites
-- Think "sharable design asset" not "tech demo" — every shader should make someone think "I want this on my website"
-- If the existing shader for this celebrity is already good, say so and ask if the user still wants alternatives
-- **60fps or bust** — every shader must perform smoothly on normal laptops. Profile mentally before building: if the algorithm requires expensive per-pixel computation, use WebGL. Cap particle counts, avoid nested loops, and keep draw calls minimal.
+- The quality bar is HIGH — portfolio-worthy generative art that designers want on their sites
+- Think "sharable design asset" not "tech demo"
+- If the existing shader for this celebrity is already good, say so
+- **60fps or bust** — if a technique can't hit 60fps, use a different technique
 - Warm amber accent palette (rgba(200, 149, 108, ...)) is the project default but celebrity shaders can use their own palette if it fits the vibe
+- **Abstract over literal. Mood over depiction. Aesthetic over simulation.**

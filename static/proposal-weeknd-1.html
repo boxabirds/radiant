@@ -54,6 +54,7 @@ uniform float u_tilt;
 uniform float u_rotate;
 uniform vec2 u_bhCenter;
 uniform float u_bhScale;
+uniform float u_chromatic;
 
 // ──── Constants ────
 const float PI = 3.14159265359;
@@ -356,37 +357,63 @@ void main() {
     // Disk over background
     col = col * (1.0 - diskAccum.a) + diskAccum.rgb;
 
-    // Sharp photon ring: very thin bright line at the shadow boundary
-    // Rays that graze the photon sphere have minR near 1.5*RS
+    // Sharp photon ring
     float ringDist = abs(minR - 1.5 * RS);
     float sharpRing = exp(-ringDist * ringDist * 800.0) * 0.35;
     col += vec3(1.0, 0.92, 0.78) * sharpRing;
 
-    // Chromatic fringe: wavelength-dependent lensing near shadow edge
-    // Red bends less (ring slightly outside), blue bends more (ring slightly inside)
-    // Wider separation and stronger intensity so it's actually visible
-    float chromaZone = smoothstep(1.5, 0.2, ringDist * 4.0);
-    if (chromaZone > 0.01) {
-        float rShift = exp(-(ringDist + 0.06) * (ringDist + 0.06) * 200.0);
-        float bShift = exp(-(ringDist - 0.06) * (ringDist - 0.06) * 200.0);
-        col.r += rShift * 0.5 * chromaZone;
-        col.b += bShift * 0.6 * chromaZone;
+    // ── Chromatic dispersion ──
+    // Controlled by u_chromatic (0 = warm/cinematic, 1 = full rainbow)
+    // Simulates wavelength-dependent lensing: blue bends more, red less
+    // Applied as radial RGB separation based on closest approach to BH
+    float chromo = u_chromatic;
+
+    // Shadow-edge chromatic fringe (always present, boosted by chromo)
+    // Wide, smooth bands — not thin/pixelated
+    float baseChroma = 0.15 + 0.85 * chromo;
+    float spread = 0.08 + 0.12 * chromo; // wider spread in chromatic mode
+    float falloff = 60.0 + 40.0 * (1.0 - chromo); // softer falloff in chromatic mode
+    float rRing = exp(-(ringDist + spread) * (ringDist + spread) * falloff);
+    float gRing = exp(-ringDist * ringDist * falloff * 1.3);
+    float bRing = exp(-(ringDist - spread) * (ringDist - spread) * falloff);
+    col.r += rRing * 0.4 * baseChroma;
+    col.g += gRing * 0.15 * baseChroma;
+    col.b += bRing * 0.5 * baseChroma;
+
+    // Disk-edge rainbow dispersion (chromatic mode only)
+    // Simulates wavelength-dependent lensing — smooth spectral spread
+    if (chromo > 0.01 && diskAccum.a > 0.01) {
+        // Spectral position based on closest approach to BH
+        // This creates a smooth gradient from red (outer) to blue (inner)
+        float spectral = smoothstep(8.0, 1.5, minR); // 0=far, 1=near shadow
+
+        // Smooth rainbow mapping (spectral curve, not harsh stripes)
+        vec3 rainbow;
+        rainbow.r = smoothstep(0.0, 0.45, spectral) * (1.0 - smoothstep(0.55, 1.0, spectral));
+        rainbow.g = smoothstep(0.15, 0.55, spectral) * (1.0 - smoothstep(0.7, 1.0, spectral));
+        rainbow.b = smoothstep(0.4, 0.8, spectral);
+        // Add warm red at the outer edge too
+        rainbow.r += (1.0 - smoothstep(0.0, 0.25, spectral)) * 0.8;
+        rainbow = normalize(rainbow + 0.1) * length(rainbow + 0.1);
+
+        // Strength: stronger at disk edges, modulated by lensing proximity
+        float edginess = diskAccum.a * (1.0 - diskAccum.a) * 4.0;
+        float proximity = smoothstep(6.0, 2.0, minR);
+        float rainbowStr = chromo * (edginess * 0.4 + proximity * 0.25);
+
+        col = mix(col, col * rainbow * 1.8, clamp(rainbowStr, 0.0, 0.45));
     }
 
     // Glow additive
     col += glow;
 
     // Filmic tone mapping (ACES-inspired) + contrast
-    col *= 1.4; // exposure boost
-    // ACES filmic curve: deep blacks, rich midtones, soft highlight rolloff
+    col *= 1.4;
     vec3 a = col * (col + 0.0245786) - 0.000090537;
     vec3 b = col * (0.983729 * col + 0.4329510) + 0.238081;
     col = a / b;
 
-    // Slight contrast enhancement via S-curve
     col = smoothstep(0.0, 1.0, col);
-
-    // Gamma
     col = pow(max(col, 0.0), vec3(0.92));
 
     gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
@@ -428,6 +455,7 @@ void main() {
   var uRotate = gl.getUniformLocation(prog, 'u_rotate');
   var uBhCenter = gl.getUniformLocation(prog, 'u_bhCenter');
   var uBhScale = gl.getUniformLocation(prog, 'u_bhScale');
+  var uChromatic = gl.getUniformLocation(prog, 'u_chromatic');
 
   var rotationSpeedVal = 0.3;
   var diskIntensityVal = 1.0;
@@ -437,6 +465,7 @@ void main() {
   var bhCenterX = 0.0;
   var bhCenterY = 0.0;
   var bhScaleVal = 0.0;
+  var chromaticVal = 0.0;
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
   var running = true;
@@ -464,6 +493,7 @@ void main() {
     gl.uniform1f(uRotate, rotateVal);
     gl.uniform2f(uBhCenter, bhCenterX, bhCenterY);
     gl.uniform1f(uBhScale, bhScaleVal);
+    gl.uniform1f(uChromatic, chromaticVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }
@@ -490,6 +520,7 @@ void main() {
         case 'BH_CENTER_X': bhCenterX = e.data.value; break;
         case 'BH_CENTER_Y': bhCenterY = e.data.value; break;
         case 'BH_SCALE': bhScaleVal = e.data.value; break;
+        case 'CHROMATIC': chromaticVal = e.data.value; break;
       }
     }
   });

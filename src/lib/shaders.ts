@@ -467,7 +467,8 @@ export const shaders: Shader[] = [
 			{ name: 'ROTATION_SPEED', label: 'Rotation Speed', min: 0.05, max: 1.0, step: 0.05, default: 0.3 },
 			{ name: 'DISK_INTENSITY', label: 'Disk Intensity', min: 0.3, max: 2.0, step: 0.1, default: 1.0 },
 			{ name: 'TILT', label: 'Tilt', min: -1.5, max: 1.5, step: 0.05, default: 0.0 },
-			{ name: 'ROTATE', label: 'Rotate', min: -3.14, max: 3.14, step: 0.05, default: 0.0 }
+			{ name: 'ROTATE', label: 'Rotate', min: -3.14, max: 3.14, step: 0.05, default: 0.0 },
+			{ name: 'CHROMATIC', label: 'Chromatic', min: 0.0, max: 1.0, step: 0.05, default: 0.0 }
 		],
 		heroConfig: {
 			params: [
@@ -523,6 +524,30 @@ export const shaders: Shader[] = [
 		params: [
 			{ name: 'FLOW_SPEED', label: 'Flow Speed', min: 0.1, max: 1.5, step: 0.05, default: 0.4 },
 			{ name: 'SHEEN_INTENSITY', label: 'Sheen Intensity', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
+		]
+	},
+	{
+		id: 'slow-burn',
+		file: 'proposal-postmalone-1.html',
+		title: 'Slow Burn',
+		desc: 'Radial warmth radiating through animated turbulence with heat shimmer, ember particles, and cool blue edges.',
+		inspiration: 'Post Malone',
+		tags: ['fill', 'noise'],
+		params: [
+			{ name: 'HEAT_INTENSITY', label: 'Heat Intensity', min: 0.3, max: 2.0, step: 0.1, default: 1.0 },
+			{ name: 'TURBULENCE', label: 'Turbulence', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
+		]
+	},
+	{
+		id: 'signal-decay',
+		file: 'proposal-postmalone-3.html',
+		title: 'Signal Decay',
+		desc: 'Clean amber waveforms progressively degrading into gorgeous warm noise — order dissolving into beautiful chaos.',
+		inspiration: 'Post Malone',
+		tags: ['fill', 'geometric'],
+		params: [
+			{ name: 'SIGNAL_SPEED', label: 'Signal Speed', min: 0.2, max: 1.5, step: 0.05, default: 0.5 },
+			{ name: 'DECAY_INTENSITY', label: 'Decay', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
 		]
 	},
 	{

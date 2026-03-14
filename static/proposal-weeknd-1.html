@@ -174,33 +174,35 @@ vec4 shadeDisk(vec3 hit, vec3 vel, float time) {
     float gRedshift = sqrt(max(0.01, 1.0 - RS / r));
     tProfile *= gRedshift;
 
-    // Disk texture — FBM using rotated Cartesian coordinates
-    // This avoids both the atan() seam AND sin/cos tiling artifacts
+    // Disk texture with Keplerian differential rotation
     float phi = atan(hit.z, hit.x);
     float lr = log2(max(r, 0.1));
 
-    // Keplerian rotation applied in Cartesian (rotate hit.xz by orbital angle)
+    // Keplerian angular velocity: omega = sqrt(GM/r³)
+    // Inner rings rotate MUCH faster than outer rings
     float keplerOmega = sqrt(0.5 * RS / (r * r * r));
-    float rotAngle = time * keplerOmega * 3.0;
+    float rotAngle = time * keplerOmega * 8.0; // 8x for visible flow
     float ca = cos(rotAngle), sa = sin(rotAngle);
     vec2 rotXZ = vec2(hit.x * ca - hit.z * sa, hit.x * sa + hit.z * ca);
 
-    // FBM sampled in rotated Cartesian — naturally seamless, no polar artifacts
-    float turb = fbm(rotXZ * 1.2 + vec2(lr * 3.0));
-    turb = 0.25 + 0.75 * turb;
+    // Concentric ring structure — the primary visual feature
+    // Multiple frequency bands with Keplerian time evolution
+    // Each ring band flows at its own orbital speed
+    float ringPhase1 = sin(r * 10.0 + rotAngle * r * 0.3) * 0.5 + 0.5;
+    float ringPhase2 = sin(r * 22.0 - rotAngle * r * 0.15) * 0.5 + 0.5;
+    float ringPhase3 = sin(r * 6.0 + rotAngle * r * 0.5) * 0.5 + 0.5;
+    float rings = ringPhase1 * 0.5 + ringPhase2 * 0.3 + ringPhase3 * 0.2;
+    rings = 0.3 + 0.7 * rings;
 
-    // Spiral arm structure
-    float arm = sin(phi * 2.0 - lr * 5.5 + time * 0.25);
-    arm = 0.6 + 0.4 * arm * arm;
+    // Subtle FBM turbulence — much lighter than before so rings dominate
+    float turb = fbm(rotXZ * 1.0 + vec2(lr * 2.0));
+    turb = 0.6 + 0.4 * turb; // less variation range
 
-    // Fine-grain detail (also Cartesian-based)
-    float detail = fbm(rotXZ * 4.0 + vec2(100.0, time * 0.05));
-    turb *= 0.7 + 0.3 * detail;
+    // Fine turbulent wisps (very subtle)
+    float detail = fbm(rotXZ * 3.5 + vec2(100.0, time * 0.03));
+    turb *= 0.85 + 0.15 * detail;
 
-    // Concentric ring structure (bright rings at specific radii)
-    float rings = sin(r * 8.0 - time * 0.2) * 0.5 + 0.5;
-    rings *= sin(r * 18.0 + time * 0.15) * 0.5 + 0.5;
-    rings = 0.7 + 0.3 * pow(rings, 0.5);
+    // Combine: rings are the dominant structure, FBM adds organic variation
     turb *= rings;
 
     // Doppler beaming from Keplerian orbital motion
@@ -212,7 +214,7 @@ vec4 shadeDisk(vec3 hit, vec3 vel, float time) {
     float dopplerBoost = dopplerFactor * dopplerFactor * dopplerFactor;
 
     // Intensity
-    float I = tProfile * turb * arm * 6.0;
+    float I = tProfile * turb * 6.0;
 
     // Edge fades
     float innerFade = smoothstep(DISK_IN * 0.7, DISK_IN * 1.2, r);
@@ -226,31 +228,35 @@ vec4 shadeDisk(vec3 hit, vec3 vel, float time) {
     float colorTemp = tProfile * pow(dopplerFactor, 1.8) * 1.2;
     vec3 col = bbColor(colorTemp) * I * dopplerBoost;
 
-    // Chromatic dispersion: each concentric ring gets a spectral hue
+    // Chromatic dispersion: each ring band gets a spectral hue
     if (u_chromatic > 0.01) {
-        // Map radius to spectral position (inner=violet/blue, outer=red)
-        // Use the same frequencies as the ring structure for coherent banding
-        float spectralR = (r - DISK_IN) / (DISK_OUT - DISK_IN); // 0-1 across disk
-        // Create spectral color from wavelength-like mapping
-        float wl = spectralR * 1.5 + 0.2; // shift range for nice color spread
+        // Smooth spectral mapping based on radius
+        // Uses the actual ring structure phase for band-coherent coloring
+        float spectralR = (r - DISK_IN) / (DISK_OUT - DISK_IN);
+        float ringP = ringPhase1; // from the ring structure above
+
+        // Combine radial position and ring phase for spectral position
+        // This ensures each bright ring band has its own distinct hue
+        float hue = spectralR * 0.8 + ringP * 0.4;
+
+        // Full visible spectrum: red → orange → yellow → green → cyan → blue
         vec3 spectrum;
-        spectrum.r = smoothstep(0.0, 0.3, wl) * (1.0 - smoothstep(0.6, 0.9, wl)) + smoothstep(1.2, 1.5, wl);
-        spectrum.g = smoothstep(0.2, 0.5, wl) * (1.0 - smoothstep(0.8, 1.1, wl));
-        spectrum.b = (1.0 - smoothstep(0.1, 0.5, wl)) + smoothstep(0.9, 1.3, wl) * 0.6;
-        spectrum = max(spectrum, 0.15); // don't fully zero any channel
+        // Red channel: strong at low hue, returns at high hue (wraps around)
+        spectrum.r = (1.0 - smoothstep(0.0, 0.35, hue))  // red at start
+                   + smoothstep(0.25, 0.45, hue) * (1.0 - smoothstep(0.55, 0.7, hue)) * 0.7  // orange/yellow
+                   + smoothstep(0.85, 1.1, hue) * 0.4; // faint return
+        // Green channel: broad peak in the middle (yellow → green → cyan)
+        spectrum.g = smoothstep(0.15, 0.4, hue) * (1.0 - smoothstep(0.7, 0.95, hue));
+        // Blue channel: peaks at high hue (cyan → blue)
+        spectrum.b = smoothstep(0.5, 0.8, hue)
+                   + smoothstep(0.85, 1.1, hue) * 0.3; // violet hint
+        spectrum = max(spectrum, 0.05);
 
-        // Ring-coherent coloring: use the ring sin() phase to create distinct bands
-        float ringPhase = sin(r * 8.0 - time * 0.2) * 0.5 + 0.5;
-        float bandColor = ringPhase * 1.2 + spectralR;
-        vec3 bandSpectrum;
-        bandSpectrum.r = sin(bandColor * 3.14) * 0.5 + 0.5;
-        bandSpectrum.g = sin(bandColor * 3.14 + 2.094) * 0.5 + 0.5;
-        bandSpectrum.b = sin(bandColor * 3.14 + 4.189) * 0.5 + 0.5;
-        bandSpectrum = max(bandSpectrum, 0.1);
+        // Preserve luminance from the original color
+        float luma = dot(col, vec3(0.3, 0.5, 0.2));
+        vec3 chromaCol = spectrum * luma * 2.0;
 
-        // Blend: mix between base warm color and spectral coloring
-        vec3 chromaCol = mix(spectrum, bandSpectrum, 0.5) * length(col) * 1.4;
-        col = mix(col, chromaCol, u_chromatic * 0.7);
+        col = mix(col, chromaCol, u_chromatic * 0.75);
     }
 
     float alpha = clamp(I * 1.3, 0.0, 0.96);
@@ -355,14 +361,11 @@ void main() {
             diskCrossings++;
         }
 
-        // ── Photon sphere glow (narrow + wide components) ──
+        // ── Photon sphere glow (single soft component) ──
         float pDist = abs(r1 - 1.5 * RS);
-        // Narrow: sharp glow right at the photon sphere
-        float narrowGlow = exp(-pDist * 14.0) * h * 0.005 / max(r1 * r1, 0.05);
-        // Wide: soft bloom halo spreading further out
-        float wideGlow = exp(-pDist * 3.0) * h * 0.0015 / max(r1 * r1, 0.1);
-        glow += vec3(1.0, 0.85, 0.6) * narrowGlow;
-        glow += vec3(0.8, 0.6, 0.35) * wideGlow;
+        // Smooth wide glow — no sharp narrow component
+        float psGlow = exp(-pDist * 4.0) * h * 0.003 / max(r1 * r1, 0.1);
+        glow += vec3(0.9, 0.7, 0.4) * psGlow;
 
         // ── Event horizon proximity glow ──
         float hzGlow = exp(-(r1 - RS) * 3.5) * h * 0.003;
@@ -389,17 +392,15 @@ void main() {
     float ringDist = abs(minR - 1.5 * RS);
     float chromo = u_chromatic;
 
-    // Soft wide bands: red outside, blue inside (wavelength-dependent bending)
-    float baseChroma = 0.12 + 0.6 * chromo;
-    float spread = 0.06 + 0.14 * chromo;
-    float falloff = 40.0 + 30.0 * (1.0 - chromo); // softer with more chromo
+    // Soft wide chromatic bands: red/orange outside, blue inside
+    // No center "white ring" — purely spectral separation
+    float baseChroma = 0.1 + 0.5 * chromo;
+    float spread = 0.07 + 0.15 * chromo;
+    float falloff = 35.0 + 25.0 * (1.0 - chromo);
     float rRing = exp(-(ringDist + spread) * (ringDist + spread) * falloff);
     float bRing = exp(-(ringDist - spread) * (ringDist - spread) * falloff);
-    // Warm golden center ring (replaces the old sharp white ring, much softer)
-    float centerRing = exp(-ringDist * ringDist * falloff * 0.8);
-    col.r += (rRing * 0.3 + centerRing * 0.15) * baseChroma;
-    col.g += centerRing * 0.12 * baseChroma;
-    col.b += (bRing * 0.35 + centerRing * 0.05) * baseChroma;
+    col.r += rRing * 0.3 * baseChroma;
+    col.b += bRing * 0.35 * baseChroma;
 
     // Glow additive
     col += glow;

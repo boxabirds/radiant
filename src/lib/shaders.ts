@@ -502,18 +502,6 @@ export const shaders: Shader[] = [
 		]
 	},
 	{
-		id: 'shatter',
-		file: 'shatter.html',
-		title: 'Shatter',
-		desc: 'Glass fracturing from impact with Voronoi fragments that separate and reassemble.',
-		inspiration: 'Olivia Rodrigo',
-		tags: ['fill', 'geometric', 'physics'],
-		params: [
-			{ name: 'SHATTER_SPEED', label: 'Shatter Speed', min: 0.3, max: 3.0, step: 0.1, default: 1.0 },
-			{ name: 'FRAGMENT_COUNT', label: 'Fragment Count', min: 15, max: 80, step: 5, default: 40 }
-		]
-	},
-	{
 		id: 'cloud-kingdom',
 		file: 'cloud-kingdom.html',
 		title: 'Cloud Kingdom',
@@ -947,7 +935,7 @@ export const shaders: Shader[] = [
 	},
 	{
 		id: 'torn-paper',
-		file: 'proposal-olivia-1.html',
+		file: 'torn-paper.html',
 		title: 'Torn Paper',
 		desc: 'Paper surface tearing apart with fibrous edges revealing warm volumetric light underneath, then reforming.',
 		inspiration: 'Olivia Rodrigo',
@@ -959,7 +947,7 @@ export const shaders: Shader[] = [
 	},
 	{
 		id: 'polaroid-burn',
-		file: 'proposal-olivia-2.html',
+		file: 'polaroid-burn.html',
 		title: 'Polaroid Burn',
 		desc: 'Scattered polaroid photos developing warm abstract memories, overexposing, and burning out with ember edges.',
 		inspiration: 'Olivia Rodrigo',
@@ -970,20 +958,8 @@ export const shaders: Shader[] = [
 		]
 	},
 	{
-		id: 'sticker-peel',
-		file: 'proposal-olivia-3.html',
-		title: 'Sticker Peel',
-		desc: 'Holographic sticker rectangles peeling up to reveal chrome metallic undersides with iridescent color shifting.',
-		inspiration: 'Olivia Rodrigo',
-		tags: ['fill', 'geometric'],
-		params: [
-			{ name: 'PEEL_SPEED', label: 'Peel Speed', min: 0.2, max: 2.0, step: 0.05, default: 0.5 },
-			{ name: 'IRIDESCENCE', label: 'Iridescence', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
-		]
-	},
-	{
 		id: 'scream-wave',
-		file: 'proposal-olivia-4.html',
+		file: 'scream-wave.html',
 		title: 'Scream Wave',
 		desc: 'Glowing waveform building from gentle sine to distorted scream with chromatic aberration and collapse.',
 		inspiration: 'Olivia Rodrigo',
@@ -991,18 +967,6 @@ export const shaders: Shader[] = [
 		params: [
 			{ name: 'INTENSITY', label: 'Intensity', min: 0.3, max: 2.0, step: 0.1, default: 1.0 },
 			{ name: 'WAVE_SPEED', label: 'Wave Speed', min: 0.3, max: 2.0, step: 0.1, default: 0.8 }
-		]
-	},
-	{
-		id: 'wax-seal',
-		file: 'proposal-olivia-5.html',
-		title: 'Wax Seal',
-		desc: 'Molten crimson wax dripping and pooling with metaball merging, cooling to dark matte with glowing cracks.',
-		inspiration: 'Olivia Rodrigo',
-		tags: ['object', 'organic', 'physics'],
-		params: [
-			{ name: 'DRIP_RATE', label: 'Drip Rate', min: 0.3, max: 2.0, step: 0.1, default: 0.7 },
-			{ name: 'WAX_HEAT', label: 'Wax Heat', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
 		]
 	}
 ];

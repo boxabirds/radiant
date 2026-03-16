@@ -21,26 +21,32 @@ Also read 3-4 of the strongest existing shaders for reference on quality bar. He
 
 ## Design Philosophy — CRITICAL
 
-**Capture aesthetics abstractly. Do NOT simulate literal real-world objects.**
+### Rule 1: Abstract over literal
+Do NOT simulate literal real-world objects (bottles, fire, glass, rust, steel wool). They always look fake. Instead, capture the *mood/texture/feeling* abstractly.
 
-Shaders that try to depict recognizable objects (bottles, fire, glass fracture, rust, steel wool) almost always look fake and get rejected, because humans have strong visual priors for how those things look. Instead, capture the *mood/texture/feeling* abstractly.
+### Rule 2: Visually stunning over intellectually clever
+A concept that sounds interesting but produces underwhelming visuals is WORSE than a simple concept with jaw-dropping visuals. The test is not "is this a clever idea?" — it's "would someone stop scrolling to stare at this?" Don't mistake conceptual sophistication for visual impact.
 
-Successes: Silk Cascade (flowing elegance without literal silk), Stardust Veil (cosmic beauty without literal nebula), Gilded Fracture (abstract kintsugi pattern), Flow Field (pure mathematical beauty).
+**Successes (visually stunning):** Silk Cascade (flowing layered fabric), Stardust Veil (cosmic parallax depth), Gilded Fracture (multi-scale golden cracks), Flow Field (elegant particle trails), Signal Decay (waveform degradation), Kinetic Grid (spring physics mesh), Slow Burn (radiant heat gradient), Rain on Glass (ultra-realistic refraction).
 
-Failures: Bottle Smash, Steel Wool Spin, Broken Windshield, Tattoo Machine, Rust Bloom — all rejected for looking unconvincing.
+**Failures — looked fake:** Bottle Smash, Steel Wool Spin, Broken Windshield, Tattoo Machine, Rust Bloom.
 
-**The rule: If someone would say "that doesn't look like a real X", the concept is wrong.** Prefer concepts where there IS no "real X" to compare against.
+**Failures — intellectually clever but visually boring:** Interference Pattern (textbook wave demo), Monolith (intentionally minimal = boring as a design asset), Cipher (just glowing geometric rings), Stratified (sparse particles in bands), Waveform Collapse (overlapping sine waves — single trick), Moonstone (basic raymarched sphere), Harmonic Sphere (basic morphing sphere), Vocal Range (basic spiral lines), Chandelier Sparkle (basic sparkle points).
+
+**The litmus test:** Before building, ask: "If I showed this to a designer, would they say 'I NEED this on my website' — or would they say 'that's neat I guess'?" If it's the latter, the concept isn't strong enough. Go back and find something with more visual punch.
 
 ## Quality Bar
 
-The shaders you build must be **ambitious, rich, and sophisticated**. Past failures have been too basic — a simple sphere, a basic spiral, plain sparkle points. These get rejected.
+The shaders you build must be **ambitious, rich, and visually stunning**. The bar is set by the best shaders in the collection, not by what's technically interesting.
 
 What makes a great shader:
+- **Genuine visual beauty** — makes you stop and stare, not just nod and move on
 - **Multiple visual layers** composited together (not just one effect)
 - **Rich multi-scale detail** (coarse + fine + micro detail)
-- **Animation that tells a story** or has clear phases (not just slowly drifting)
 - **Fills the entire canvas** with interesting detail (not a small object in the center)
+- **Dynamic and alive** — clear animation with visual drama, not just slowly drifting
 - **Would genuinely work as a website background, hero section, or design asset**
+- **The "screenshot test"**: a single still frame should look beautiful enough to be a wallpaper
 
 What gets rejected:
 - Simple raymarched sphere with one effect

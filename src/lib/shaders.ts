@@ -566,18 +566,6 @@ export const shaders: Shader[] = [
 		]
 	},
 	{
-		id: 'verse-particles',
-		file: 'verse-particles.html',
-		title: 'Verse Particles',
-		desc: 'Particles converging to form words then dissolving back into cosmic chaos.',
-		inspiration: 'Kendrick Lamar',
-		tags: ['fill', 'particles'],
-		params: [
-			{ name: 'MORPH_SPEED', label: 'Morph Speed', min: 0.3, max: 3.0, step: 0.1, default: 1.0 },
-			{ name: 'PARTICLE_COUNT', label: 'Particle Count', min: 1000, max: 8000, step: 500, default: 3000 }
-		]
-	},
-	{
 		id: 'rhinestone-cascade',
 		file: 'rhinestone-cascade.html',
 		title: 'Rhinestone Cascade',

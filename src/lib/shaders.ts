@@ -731,7 +731,20 @@ export const shaders: Shader[] = [
 		technique: 'webgl',
 		params: [
 			{ name: 'GROWTH_SPEED', label: 'Growth Speed', min: 0.3, max: 3.0, step: 0.1, default: 1.0 },
-			{ name: 'BRANCH_DENSITY', label: 'Branch Density', min: 0.2, max: 0.8, step: 0.05, default: 0.5 }
+			{ name: 'REFRACTION', label: 'Prismatic', min: 0.0, max: 2.0, step: 0.1, default: 1.0 }
+		]
+	},
+	{
+		id: 'lace-reaction',
+		file: 'proposal-anne-2.html',
+		title: 'Lace Reaction',
+		desc: 'Reaction-diffusion system producing living lace filigree patterns in warm ivory on charcoal.',
+		inspiration: 'Anne Hathaway',
+		tags: ['fill', 'organic'],
+		technique: 'webgl',
+		params: [
+			{ name: 'PATTERN_SPEED', label: 'Pattern Speed', min: 0.3, max: 2.0, step: 0.1, default: 1.0 },
+			{ name: 'LACE_DENSITY', label: 'Lace Density', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
 		]
 	},
 	{

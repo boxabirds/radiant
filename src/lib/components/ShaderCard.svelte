@@ -1,10 +1,14 @@
 <script lang="ts">
 	import { getShaderNumber, type Shader } from '$lib/shaders';
+	import { getPaletteForInspiration, hexToRgb } from '$lib/inspiration-palettes';
 	import { onMount } from 'svelte';
 
 	let { shader, active = false, preload = false, filter = 'none' }: { shader: Shader; active?: boolean; preload?: boolean; filter?: string } = $props();
 
 	const number = $derived(getShaderNumber(shader));
+	const cardAccent = $derived(
+		shader.inspiration ? hexToRgb(getPaletteForInspiration(shader.inspiration)?.primary ?? '#c8956c') : '200, 149, 108'
+	);
 
 	let inViewport = $state(false);
 	let posterUrl: string | null = $state(null);
@@ -89,7 +93,7 @@
 	});
 </script>
 
-<a class="card" href="/shader/{shader.id}" use:observe>
+<a class="card" href="/shader/{shader.id}" use:observe style:--card-accent={cardAccent}>
 	<div class="card-preview" class:inactive={!active} style:filter={active ? filter : undefined}>
 		{#if posterUrl}
 			<img src={posterUrl} alt={shader.title} class="poster" />
@@ -113,7 +117,7 @@
 
 <style>
 	.card {
-		border: 1px solid rgba(200, 149, 108, 0.12);
+		border: 1px solid rgba(var(--card-accent, 200, 149, 108), 0.25);
 		border-radius: 8px;
 		overflow: hidden;
 		transition:
@@ -123,7 +127,7 @@
 		display: block;
 	}
 	.card:hover {
-		border-color: rgba(200, 149, 108, 0.4);
+		border-color: rgba(var(--card-accent, 200, 149, 108), 0.55);
 		transform: translateY(-2px);
 	}
 	.card-preview {
@@ -132,7 +136,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		border-bottom: 1px solid rgba(200, 149, 108, 0.08);
+		border-bottom: 1px solid rgba(var(--card-accent, 200, 149, 108), 0.15);
 		position: relative;
 		overflow: hidden;
 		transition: filter 0.5s ease;

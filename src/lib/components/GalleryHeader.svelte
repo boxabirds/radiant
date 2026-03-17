@@ -1,8 +1,14 @@
 <script lang="ts">
-	let { title, description, count, intro }: { title: string; description: string; count: number; intro?: string } = $props();
+	import AmbientGlow from './AmbientGlow.svelte';
+	import type { InspirationPalette } from '$lib/inspiration-palettes';
+
+	let { title, description, count, intro, palette }: { title: string; description: string; count: number; intro?: string; palette?: InspirationPalette } = $props();
 </script>
 
-<header class="gallery-header">
+<header class="gallery-header" class:has-glow={!!palette}>
+	{#if palette}
+		<AmbientGlow colors={palette.colors} />
+	{/if}
 	<div class="header-top">
 		<h1>{title}</h1>
 		<p>{description}</p>
@@ -19,6 +25,14 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1.25rem;
+	}
+	.gallery-header.has-glow {
+		position: relative;
+		overflow: hidden;
+	}
+	.gallery-header.has-glow .header-top {
+		position: relative;
+		z-index: 1;
 	}
 	.gallery-header h1 {
 		font-size: 1.5rem;

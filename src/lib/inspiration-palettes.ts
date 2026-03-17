@@ -1,0 +1,227 @@
+export interface InspirationPalette {
+	primary: string; // hex, used for card border tint
+	colors: string[]; // 2-4 hex colors for ambient glow
+}
+
+export const inspirationPalettes: Record<string, InspirationPalette> = {
+	// Musicians
+	'sabrina-carpenter': {
+		primary: '#E8527A',
+		colors: ['#E8527A', '#8B4570', '#CD6060']
+	},
+	'laufey': {
+		primary: '#C9A84C',
+		colors: ['#F5E6C8', '#C9A84C', '#D4A055']
+	},
+	'dua-lipa': {
+		primary: '#E03A8A',
+		colors: ['#E03A8A', '#1A3A8A', '#C0C0D0']
+	},
+	'billie-eilish': {
+		primary: '#6AE090',
+		colors: ['#6AE090', '#8878AA', '#2A4A3A']
+	},
+	'taylor-swift': {
+		primary: '#C8964C',
+		colors: ['#1A2A5A', '#C8964C', '#2A6A3A']
+	},
+	'beyonce': {
+		primary: '#D4A028',
+		colors: ['#D4A028', '#A0522D', '#6A3D8A']
+	},
+	'bad-bunny': {
+		primary: '#E87460',
+		colors: ['#A0E832', '#E87460', '#5A2D82', '#40C4AA']
+	},
+	'sza': {
+		primary: '#D4944C',
+		colors: ['#D4944C', '#CC5500', '#8FAE8B']
+	},
+	'rihanna': {
+		primary: '#9B1B30',
+		colors: ['#9B1B30', '#D4A028', '#FF6B35']
+	},
+	'lady-gaga': {
+		primary: '#C0328A',
+		colors: ['#C0C0D0', '#C0328A', '#A080C0']
+	},
+	'bruno-mars': {
+		primary: '#D4A028',
+		colors: ['#D4A028', '#CC2244', '#4A2028']
+	},
+	'the-weeknd': {
+		primary: '#B01030',
+		colors: ['#B01030', '#2060CC', '#D4944C']
+	},
+	'ariana-grande': {
+		primary: '#C8A0B8',
+		colors: ['#C8A0B8', '#E8D8E8', '#8A7088']
+	},
+	'post-malone': {
+		primary: '#B89848',
+		colors: ['#C8944C', '#B89848', '#6080A0']
+	},
+	'dolly-parton': {
+		primary: '#D4A44C',
+		colors: ['#D4A44C', '#2A6A3A', '#E84890']
+	},
+	'hozier': {
+		primary: '#6A8A5A',
+		colors: ['#6A8A5A', '#C89448', '#8A8A90']
+	},
+	'chappell-roan': {
+		primary: '#E83878',
+		colors: ['#E83878', '#88CC28', '#C8A038']
+	},
+	'olivia-rodrigo': {
+		primary: '#8A1838',
+		colors: ['#8A1838', '#6A28AA', '#E84888']
+	},
+	'harry-styles': {
+		primary: '#B088CC',
+		colors: ['#B088CC', '#E8A0A0', '#88C8A8']
+	},
+
+	// Actors
+	'jim-carrey': {
+		primary: '#88E828',
+		colors: ['#88E828', '#E8D828', '#2888E8']
+	},
+	'jack-black': {
+		primary: '#E87028',
+		colors: ['#E87028', '#B82828', '#D4A038']
+	},
+	'robert-downey-jr': {
+		primary: '#4890D4',
+		colors: ['#6A7080', '#4890D4', '#8A2838']
+	},
+	'meryl-streep': {
+		primary: '#7A2838',
+		colors: ['#B0B0C0', '#606878', '#7A2838']
+	},
+	'anne-hathaway': {
+		primary: '#C85878',
+		colors: ['#E8E8F0', '#C85878', '#1A2048']
+	},
+	'timothee-chalamet': {
+		primary: '#D4B878',
+		colors: ['#D4B878', '#7A2838', '#6080A0']
+	},
+	'zendaya': {
+		primary: '#B07838',
+		colors: ['#B07838', '#C08848', '#7868A0']
+	},
+	'keanu-reeves': {
+		primary: '#3868B0',
+		colors: ['#181828', '#3868B0', '#C87838']
+	},
+	'florence-pugh': {
+		primary: '#E8A828',
+		colors: ['#E8A828', '#E87868', '#488860']
+	},
+	'pedro-pascal': {
+		primary: '#D4944C',
+		colors: ['#D4944C', '#C06840', '#6A2030']
+	},
+	'ryan-gosling': {
+		primary: '#E86888',
+		colors: ['#E86888', '#3868CC', '#C89078']
+	},
+	'margot-robbie': {
+		primary: '#E888A8',
+		colors: ['#E888A8', '#D4A028', '#CC2828']
+	},
+	'oscar-isaac': {
+		primary: '#C89838',
+		colors: ['#5A3820', '#C89838', '#6A6838']
+	},
+	'cate-blanchett': {
+		primary: '#B0B8D0',
+		colors: ['#B0B0C0', '#B0B8D0', '#8898C0']
+	},
+	'cillian-murphy': {
+		primary: '#78A8D0',
+		colors: ['#78A8D0', '#808888', '#B89848']
+	},
+	'sydney-sweeney': {
+		primary: '#E8B898',
+		colors: ['#E8B898', '#D4B878', '#A0C0E0']
+	},
+	'jenna-ortega': {
+		primary: '#5A2858',
+		colors: ['#282030', '#5A2858', '#A0A0B8']
+	},
+	'glen-powell': {
+		primary: '#D4A858',
+		colors: ['#D4A858', '#3080C8', '#E8E0D8']
+	},
+	'ana-de-armas': {
+		primary: '#D4A038',
+		colors: ['#D4A038', '#E8E0D0', '#8A7838']
+	},
+	'jason-momoa': {
+		primary: '#28887A',
+		colors: ['#181820', '#28887A', '#E87028']
+	},
+	'lupita-nyong-o': {
+		primary: '#2858CC',
+		colors: ['#2858CC', '#D4A028', '#5A2880']
+	},
+	'jeff-goldblum': {
+		primary: '#E87868',
+		colors: ['#181838', '#E87868', '#7A2030']
+	},
+	'tom-hanks': {
+		primary: '#D4A068',
+		colors: ['#D4A068', '#8A6038', '#1A2848']
+	},
+	'viola-davis': {
+		primary: '#B88038',
+		colors: ['#5A3828', '#B88038', '#302038']
+	},
+	'denzel-washington': {
+		primary: '#A88038',
+		colors: ['#202020', '#A88038', '#8A2020']
+	},
+	'scarlett-johansson': {
+		primary: '#A82030',
+		colors: ['#484850', '#A82030', '#8098B0']
+	},
+	'emma-stone': {
+		primary: '#C87848',
+		colors: ['#C87848', '#D4A868', '#785098']
+	},
+	'jennifer-lawrence': {
+		primary: '#D88898',
+		colors: ['#A0A0B0', '#D88898', '#285838']
+	},
+	'austin-butler': {
+		primary: '#B08858',
+		colors: ['#B08858', '#D4B878', '#7888A0']
+	}
+};
+
+/** Convert hex (#RRGGBB) to "R, G, B" string for use in rgba() */
+export function hexToRgb(hex: string): string {
+	const h = hex.replace('#', '');
+	const r = parseInt(h.substring(0, 2), 16);
+	const g = parseInt(h.substring(2, 4), 16);
+	const b = parseInt(h.substring(4, 6), 16);
+	return `${r}, ${g}, ${b}`;
+}
+
+/** Look up palette by inspiration name (e.g. "Beyoncé") */
+export function getPaletteForInspiration(name: string): InspirationPalette | undefined {
+	const slug = name
+		.toLowerCase()
+		.normalize('NFD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/(^-|-$)/g, '');
+	return inspirationPalettes[slug];
+}
+
+/** Look up palette by slug (e.g. "beyonce") */
+export function getPaletteForSlug(slug: string): InspirationPalette | undefined {
+	return inspirationPalettes[slug];
+}

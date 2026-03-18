@@ -359,17 +359,21 @@
     ctx.fill();
   }
 
-  // ── Draw trail glow for a body at a position ──
-  function drawTrailGlow(px, py, body, alpha) {
-    var r = body.glowRadius;
-    var scaledR = r * (minDim / 800) * 1.2;
-
-    var grd = ctx.createRadialGradient(px, py, 0, px, py, scaledR);
-    grd.addColorStop(0, 'rgba(' + body.r + ',' + body.g + ',' + body.b + ',' + (alpha * 0.25) + ')');
-    grd.addColorStop(0.5, 'rgba(' + body.r + ',' + body.g + ',' + body.b + ',' + (alpha * 0.08) + ')');
+  // ── Draw trail dot for a body (small bright point, like flow-field) ──
+  function drawTrailDot(px, py, body) {
+    var dotR = 2.5 * (minDim / 800);
+    // Bright concentrated dot — accumulates into clean narrow trails
+    ctx.beginPath();
+    ctx.arc(px, py, dotR, 0, TAU);
+    ctx.fillStyle = 'rgba(' + body.r + ',' + body.g + ',' + body.b + ',0.6)';
+    ctx.fill();
+    // Slightly wider soft halo
+    var haloR = dotR * 4;
+    var grd = ctx.createRadialGradient(px, py, 0, px, py, haloR);
+    grd.addColorStop(0, 'rgba(' + body.r + ',' + body.g + ',' + body.b + ',0.15)');
     grd.addColorStop(1, 'rgba(' + body.r + ',' + body.g + ',' + body.b + ',0)');
     ctx.beginPath();
-    ctx.arc(px, py, scaledR, 0, TAU);
+    ctx.arc(px, py, haloR, 0, TAU);
     ctx.fillStyle = grd;
     ctx.fill();
   }
@@ -395,7 +399,7 @@
     // Higher TRAIL_LENGTH = longer trails = lower fade alpha
     // Map 50->0.08, 200->0.03, 500->0.008
     var t = (trailLength - 50) / 450; // 0 to 1
-    var alpha = 0.08 - t * 0.072; // 0.08 down to 0.008
+    var alpha = 0.04 - t * 0.032; // 0.04 down to 0.008
     return Math.max(0.005, Math.min(0.1, alpha));
   }
 
@@ -446,25 +450,14 @@
     ctx.fillStyle = 'rgba(12, 10, 14,' + fadeAlpha + ')';
     ctx.fillRect(0, 0, W, H);
 
-    // ── Redraw starfield faintly to prevent it from fading out ──
-    // Every few frames, re-stamp stars so they persist through the fade
-    if (frameCount % 3 === 0) {
-      ctx.globalAlpha = fadeAlpha * 4;
+    // ── Redraw starfield to prevent fade-out ──
+    if (frameCount % 5 === 0) {
+      ctx.globalAlpha = fadeAlpha * 5;
       ctx.drawImage(starCanvas, 0, 0, W, H);
       ctx.globalAlpha = 1;
-
-      // Also maintain nebula
-      ctx.globalAlpha = fadeAlpha * 3;
-      ctx.drawImage(nebulaCanvas, 0, 0, W, H);
-      ctx.globalAlpha = 1;
     }
 
-    // Star twinkle
-    if (frameCount % 4 === 0) {
-      drawStarTwinkle(time);
-    }
-
-    // ── Draw bodies ──
+    // ── Draw trail dots (accumulate into luminous arcs) ──
     ctx.globalCompositeOperation = 'lighter';
 
     for (var i = 0; i < NUM_BODIES; i++) {
@@ -472,11 +465,15 @@
       var pos = bodyPosition(body, time * orbitSpeed);
       var pixel = toPixel(pos.x, pos.y);
 
-      // Draw trail glow at current position (accumulates over frames)
-      var trailAlpha = 0.06 + gravityStrength * 0.04; // Subtle trail accumulation
-      drawTrailGlow(pixel.x, pixel.y, body, trailAlpha);
+      // Small bright dot — creates clean narrow trails via accumulation
+      drawTrailDot(pixel.x, pixel.y, body);
+    }
 
-      // Draw the body itself
+    // ── Draw bodies on top (full glow rendering) ──
+    for (var i = 0; i < NUM_BODIES; i++) {
+      var body = bodies[i];
+      var pos = bodyPosition(body, time * orbitSpeed);
+      var pixel = toPixel(pos.x, pos.y);
       drawBody(pixel.x, pixel.y, body, time, i);
     }
 

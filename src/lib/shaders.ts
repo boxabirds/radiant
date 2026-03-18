@@ -477,7 +477,14 @@ export const shaders: Shader[] = [
 		params: [
 			{ name: 'FILM_THICKNESS', label: 'Film Thickness', min: 0.5, max: 3.0, step: 0.1, default: 1.0 },
 			{ name: 'FLOW_SPEED', label: 'Flow Speed', min: 0.1, max: 2.0, step: 0.1, default: 0.5 }
-		]
+		],
+		heroConfig: {
+			params: [
+				{ name: 'CENTER_X', value: 0.68 },
+				{ name: 'CENTER_Y', value: 0.5 },
+				{ name: 'SCALE', value: 0.45 }
+			]
+		}
 	},
 	{
 		id: 'silk-groove',
@@ -592,7 +599,14 @@ export const shaders: Shader[] = [
 		params: [
 			{ name: 'HEAT_INTENSITY', label: 'Heat Intensity', min: 0.3, max: 2.0, step: 0.1, default: 1.0 },
 			{ name: 'TURBULENCE', label: 'Turbulence', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
-		]
+		],
+		heroConfig: {
+			params: [
+				{ name: 'CENTER_X', value: 0.68 },
+				{ name: 'CENTER_Y', value: 0.45 },
+				{ name: 'SCALE', value: 0.5 }
+			]
+		}
 	},
 	{
 		id: 'signal-decay',

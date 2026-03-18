@@ -42,6 +42,8 @@
     'uniform vec2 u_res;',
     'uniform float u_filmThickness;',
     'uniform float u_flowSpeed;',
+    'uniform vec2 u_center;',
+    'uniform float u_scale;',
     '',
     '#define PI 3.141592653589793',
     '#define TAU 6.283185307179586',
@@ -133,7 +135,9 @@
     'void main(){',
     '  vec2 uv = gl_FragCoord.xy / u_res;',
     '  float aspect = u_res.x / u_res.y;',
-    '  vec2 p = (uv - 0.5) * vec2(aspect, 1.0);',
+    '  vec2 origin = u_scale > 0.0 ? u_center : vec2(0.5);',
+    '  float sc = u_scale > 0.0 ? u_scale : 1.0;',
+    '  vec2 p = (uv - origin) * vec2(aspect, 1.0) / sc;',
     '  float t = u_time * u_flowSpeed;',
     '',
     '  // ---- Multiple overlapping bubble film surfaces ----',
@@ -299,8 +303,13 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uFilmThickness = gl.getUniformLocation(prog, 'u_filmThickness');
   var uFlowSpeed = gl.getUniformLocation(prog, 'u_flowSpeed');
+  var uCenter = gl.getUniformLocation(prog, 'u_center');
+  var uScale = gl.getUniformLocation(prog, 'u_scale');
   var filmThicknessVal = 1.0;
   var flowSpeedVal = 0.5;
+  var centerX = 0.0;
+  var centerY = 0.0;
+  var scaleVal = 0.0;
 
   var urlParams = new URLSearchParams(window.location.search);
   var pixelScale = parseFloat(urlParams.get('p')) || 1;
@@ -325,6 +334,8 @@
     gl.uniform2f(uRes, canvas.width, canvas.height);
     gl.uniform1f(uFilmThickness, filmThicknessVal);
     gl.uniform1f(uFlowSpeed, flowSpeedVal);
+    gl.uniform2f(uCenter, centerX, centerY);
+    gl.uniform1f(uScale, scaleVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }
@@ -345,6 +356,9 @@
       switch (e.data.name) {
         case 'FILM_THICKNESS': filmThicknessVal = e.data.value; break;
         case 'FLOW_SPEED': flowSpeedVal = e.data.value; break;
+        case 'CENTER_X': centerX = e.data.value; break;
+        case 'CENTER_Y': centerY = e.data.value; break;
+        case 'SCALE': scaleVal = e.data.value; break;
       }
     }
   });

@@ -55,6 +55,8 @@
     'uniform vec2 u_res;',
     'uniform float u_heat;',
     'uniform float u_turbulence;',
+    'uniform vec2 u_center;',
+    'uniform float u_scale;',
     '',
     '#define PI 3.14159265359',
     '#define TAU 6.28318530718',
@@ -189,7 +191,9 @@
     '}',
     '',
     'void main() {',
-    '  vec2 uv = (gl_FragCoord.xy - u_res * 0.5) / min(u_res.x, u_res.y);',
+    '  vec2 origin = u_scale > 0.0 ? u_center : vec2(0.5);',
+    '  float sc = u_scale > 0.0 ? u_scale : 1.0;',
+    '  vec2 uv = (gl_FragCoord.xy - u_res * origin) / (min(u_res.x, u_res.y) * sc);',
     '  float t = u_time;',
     '  float heat = u_heat;',
     '  float turb = u_turbulence;',
@@ -210,13 +214,13 @@
     '  float sa = sin(angle);',
     '',
     '  // Large-scale turbulence — slow breathing of the boundary',
-    '  float turb1 = fbm(vec2(ca * 1.5 + sa * 0.7 + t * 0.08, dist * 2.0 - t * 0.05) * 1.8, 6) * turb;',
+    '  float turb1 = fbm(vec2(ca * 1.5 + sa * 0.7 + t * 0.08, dist * 2.0 - t * 0.05) * 1.8, 5) * turb;',
     '',
     '  // Medium-scale turbulence — faster, more detail',
-    '  float turb2 = fbm(vec2(ca * 3.0 - sa * 1.5 - t * 0.12, dist * 3.5 + t * 0.07) * 2.5 + vec2(50.0, 30.0), 5) * turb;',
+    '  float turb2 = fbm(vec2(ca * 3.0 - sa * 1.5 - t * 0.12, dist * 3.5 + t * 0.07) * 2.5 + vec2(50.0, 30.0), 4) * turb;',
     '',
     '  // Fine-scale turbulence — rapid small variations',
-    '  float turb3 = fbm(vec2(ca * 5.0 + sa * 2.5 + t * 0.2, dist * 5.0 - t * 0.15) * 3.0 + vec2(100.0, 70.0), 4) * turb;',
+    '  float turb3 = fbm(vec2(ca * 5.0 + sa * 2.5 + t * 0.2, dist * 5.0 - t * 0.15) * 3.0 + vec2(100.0, 70.0), 3) * turb;',
     '',
     '  // Combine turbulence at different scales',
     '  float turbTotal = turb1 * 0.45 + turb2 * 0.35 + turb3 * 0.2;',
@@ -243,7 +247,7 @@
     '  // ──────────────────────────────────────────',
     '',
     '  // Luminosity variation from noise — adds color richness',
-    '  float lumVar = fbm(uv * 4.0 + t * 0.06, 4) * 2.0 - 1.0;',
+    '  float lumVar = fbm(uv * 4.0 + t * 0.06, 3) * 2.0 - 1.0;',
     '',
     '  vec3 col = tempColor(temp, lumVar);',
     '',
@@ -253,37 +257,20 @@
     '  // Strongest in the hot areas, zero at the cool edges.',
     '  // ──────────────────────────────────────────',
     '',
-    '  // Get noise with derivatives for distortion direction',
-    '  vec3 shimmerNoise = fbmd(uv * 8.0 + vec2(t * 0.3, t * 0.25), 5);',
-    '  vec2 shimmerOffset = shimmerNoise.yz;',
+    '  // Heat shimmer — distort color using noise derivatives (no re-sampling)',
+    '  vec3 shimmerNoise = fbmd(uv * 8.0 + vec2(t * 0.3, t * 0.25), 4);',
+    '  float shimmerWave = shimmerNoise.x;',
+    '  vec2 shimmerDir = shimmerNoise.yz;',
     '',
-    '  // Second shimmer layer at different frequency for complexity',
-    '  vec3 shimmerNoise2 = fbmd(uv * 14.0 - vec2(t * 0.4, t * 0.35) + vec2(50.0, 80.0), 4);',
-    '  shimmerOffset += shimmerNoise2.yz * 0.5;',
+    '  // Shimmer creates bright/dark ripples in hot areas',
+    '  float shimmerStrength = temp * temp * turb;',
+    '  float shimmerRipple = dot(shimmerDir, vec2(0.7, 0.7));',
+    '  shimmerRipple = shimmerRipple * shimmerRipple * shimmerStrength;',
+    '  col += col * shimmerRipple * 0.4;',
     '',
-    '  // Shimmer strength scales with temperature',
-    '  float shimmerStrength = temp * temp * 0.025 * turb;',
-    '',
-    '  // Apply shimmer by re-sampling the temperature at offset coordinates',
-    '  vec2 shimmerUV = uv + shimmerOffset * shimmerStrength;',
-    '  float shimmerDist = length(shimmerUV);',
-    '  float shimmerAngle = atan(shimmerUV.y, shimmerUV.x);',
-    '  float shimmerTurb = fbm(vec2(cos(shimmerAngle) * 1.5 + sin(shimmerAngle) * 0.7 + t * 0.08, shimmerDist * 2.0 - t * 0.05) * 1.8, 5) * turb;',
-    '  float shimmerDeform = shimmerDist + (shimmerTurb - 0.5) * 0.35 * smoothstep(0.0, 0.3, shimmerDist) * smoothstep(0.9, 0.4, shimmerDist) - pulse * heat;',
-    '  float shimmerTemp = 1.0 - smoothstep(0.0, tempRange, shimmerDeform);',
-    '  float shimmerCore = 1.0 - smoothstep(0.0, 0.15 / heat, shimmerDeform);',
-    '  shimmerTemp = shimmerTemp * 0.7 + shimmerCore * 0.3;',
-    '  shimmerTemp = clamp(shimmerTemp, 0.0, 1.0);',
-    '',
-    '  // Blend the shimmered version with the base',
-    '  vec3 shimmerCol = tempColor(shimmerTemp, lumVar);',
-    '  float shimmerBlend = temp * temp * 0.6;',
-    '  col = mix(col, shimmerCol, shimmerBlend);',
-    '',
-    '  // Extra shimmer highlights — bright ripples in hot areas',
-    '  float shimmerHighlight = shimmerNoise.x * shimmerNoise2.x;',
-    '  shimmerHighlight = pow(shimmerHighlight, 3.0) * temp * temp;',
-    '  col += vec3(1.0, 0.8, 0.4) * shimmerHighlight * 0.25 * heat;',
+    '  // Extra shimmer highlights',
+    '  float shimmerHighlight = pow(max(shimmerWave, 0.0), 4.0) * temp * temp;',
+    '  col += vec3(1.0, 0.8, 0.4) * shimmerHighlight * 0.2 * heat;',
     '',
     '  // ──────────────────────────────────────────',
     '  // Layer 4: Turbulent veins (ridged noise convection currents)',
@@ -291,11 +278,11 @@
     '  // ──────────────────────────────────────────',
     '',
     '  // Primary vein network',
-    '  float veins1 = ridged(uv * 5.0 + vec2(t * 0.06, -t * 0.04), 5);',
+    '  float veins1 = ridged(uv * 5.0 + vec2(t * 0.06, -t * 0.04), 4);',
     '  // Secondary vein network at different scale/angle',
-    '  float veins2 = ridged(uv * 8.0 + vec2(-t * 0.08, t * 0.05) + vec2(20.0, 40.0), 4);',
+    '  float veins2 = ridged(uv * 8.0 + vec2(-t * 0.08, t * 0.05) + vec2(20.0, 40.0), 3);',
     '  // Tertiary fine detail',
-    '  float veins3 = ridged(uv * 13.0 + vec2(t * 0.1, t * 0.07) + vec2(60.0, 90.0), 3);',
+    '  float veins3 = ridged(uv * 13.0 + vec2(t * 0.1, t * 0.07) + vec2(60.0, 90.0), 2);',
     '',
     '  float veins = veins1 * 0.5 + veins2 * 0.35 + veins3 * 0.15;',
     '',
@@ -436,8 +423,15 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uHeat = gl.getUniformLocation(prog, 'u_heat');
   var uTurbulence = gl.getUniformLocation(prog, 'u_turbulence');
+  var uCenter = gl.getUniformLocation(prog, 'u_center');
+  var uScale = gl.getUniformLocation(prog, 'u_scale');
+  var centerX = 0.0;
+  var centerY = 0.0;
+  var scaleVal = 0.0;
 
-  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var urlParams = new URLSearchParams(window.location.search);
+  var pixelScale = parseFloat(urlParams.get('p')) || 1;
+  var dpr = 1.0 / pixelScale;
 
   function resize() {
     var scale = 1.0 / pixelScale;
@@ -459,6 +453,8 @@
     gl.uniform2f(uRes, canvas.width, canvas.height);
     gl.uniform1f(uHeat, HEAT_INTENSITY);
     gl.uniform1f(uTurbulence, TURBULENCE);
+    gl.uniform2f(uCenter, centerX, centerY);
+    gl.uniform1f(uScale, scaleVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }
@@ -483,6 +479,9 @@
       switch (e.data.name) {
         case 'HEAT_INTENSITY': HEAT_INTENSITY = e.data.value; break;
         case 'TURBULENCE': TURBULENCE = e.data.value; break;
+        case 'CENTER_X': centerX = e.data.value; break;
+        case 'CENTER_Y': centerY = e.data.value; break;
+        case 'SCALE': scaleVal = e.data.value; break;
       }
     }
   });

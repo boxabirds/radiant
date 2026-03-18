@@ -1081,22 +1081,6 @@ export const shaders: Shader[] = [
 		]
 	},
 	{
-		id: 'strange-loop',
-		file: 'strange-loop.html',
-		title: 'Strange Loop',
-		desc: 'Impossible Penrose-like geometry rendered as a continuously flowing raymarched surface with paradoxical depth.',
-		inspiration: 'Benedict Cumberbatch',
-		tags: ['object', 'geometric'],
-		technique: 'webgl',
-		params: [
-			{ name: 'ROTATION_SPEED', label: 'Rotation Speed', min: 0.0, max: 1.0, step: 0.05, default: 0.3 },
-			{ name: 'FLOW_SPEED', label: 'Flow Speed', min: 0.0, max: 1.5, step: 0.05, default: 0.5 },
-			{ name: 'TILT', label: 'Tilt', min: 0.0, max: 1.5, step: 0.05, default: 0.65 },
-			{ name: 'ZOOM', label: 'Zoom', min: 4.0, max: 12.0, step: 0.2, default: 7.2 },
-			{ name: 'SHAPE', label: 'Shape', min: 0, max: 2, step: 1, default: 0 }
-		]
-	},
-	{
 		id: 'phase-transition',
 		file: 'phase-transition.html',
 		title: 'Phase Transition',

@@ -687,6 +687,32 @@ export const shaders: Shader[] = [
 		]
 	},
 	{
+		id: 'edge-of-chaos',
+		file: 'edge-of-chaos.html',
+		title: 'Edge of Chaos',
+		desc: 'Reaction-diffusion maze with golden edge glow and organic pop-and-regrow cycle.',
+		inspiration: 'Robert Downey Jr.',
+		tags: ['fill', 'organic'],
+		technique: 'webgl',
+		params: [
+			{ name: 'PATTERN_SPEED', label: 'Evolution Speed', min: 0.2, max: 3.0, step: 0.1, default: 1.0 },
+			{ name: 'POP_RATE', label: 'Pop Frequency', min: 0.2, max: 3.0, step: 0.1, default: 1.0 }
+		]
+	},
+	{
+		id: 'spark-chamber',
+		file: 'spark-chamber.html',
+		title: 'Spark Chamber',
+		desc: 'Charged particles spiraling through a magnetic field, leaving curved trails like cloud chamber photography.',
+		inspiration: 'Robert Downey Jr.',
+		tags: ['fill', 'particles', 'physics'],
+		technique: 'canvas-2d',
+		params: [
+			{ name: 'EMISSION_RATE', label: 'Emission Rate', min: 0.2, max: 3.0, step: 0.1, default: 1.0 },
+			{ name: 'FIELD_STRENGTH', label: 'Field Strength', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
+		]
+	},
+	{
 		id: 'shifting-veils',
 		file: 'shifting-veils.html',
 		title: 'Shifting Veils',
@@ -1099,6 +1125,7 @@ export const shaders: Shader[] = [
 		file: 'chromatic-bloom.html',
 		title: 'Chromatic Bloom',
 		desc: 'Luminous color orbs drifting on pure black with Gaussian glow, additive blending, film grain, and cinematic vignette.',
+		inspiration: 'Lady Gaga',
 		tags: ['fill', 'noise'],
 		technique: 'webgl',
 		params: [
@@ -1111,6 +1138,7 @@ export const shaders: Shader[] = [
 		file: 'lens-whisper.html',
 		title: 'Lens Whisper',
 		desc: 'Anamorphic lens flares with chromatic color separation, horizontal streaks, bokeh halos, and cinematic film grain on pure black.',
+		inspiration: 'Ryan Gosling',
 		tags: ['fill', 'noise'],
 		technique: 'webgl',
 		params: [
@@ -1119,34 +1147,11 @@ export const shaders: Shader[] = [
 		]
 	},
 	{
-		id: 'velvet-frequency',
-		file: 'velvet-frequency.html',
-		title: 'Velvet Frequency',
-		desc: 'Ridged simplex noise bands flowing like velvet fabric folds in a warm/cool palette.',
-		tags: ['fill', 'noise', 'organic'],
-		technique: 'webgl',
-		params: [
-			{ name: 'FLOW_SPEED', label: 'Flow Speed', min: 0.1, max: 2.0, step: 0.05, default: 0.6 },
-			{ name: 'BAND_DENSITY', label: 'Band Density', min: 0.3, max: 2.0, step: 0.05, default: 1.0 }
-		]
-	},
-	{
-		id: 'phantom-glow',
-		file: 'phantom-glow.html',
-		title: 'Phantom Glow',
-		desc: 'Colored light sources drifting behind frosted glass with noise-displaced UV sampling, refraction highlights, film grain, and vignette.',
-		tags: ['fill', 'noise'],
-		technique: 'webgl',
-		params: [
-			{ name: 'DRIFT_SPEED', label: 'Drift Speed', min: 0.1, max: 2.0, step: 0.05, default: 0.4 },
-			{ name: 'DIFFUSION', label: 'Diffusion', min: 0.3, max: 2.0, step: 0.05, default: 1.0 }
-		]
-	},
-	{
 		id: 'luminous-silt',
 		file: 'luminous-silt.html',
 		title: 'Luminous Silt',
 		desc: 'Dense field of 18K particles creating soft color clouds through alpha accumulation over a noise-driven flow field.',
+		inspiration: 'Lupita Nyong\'o',
 		tags: ['fill', 'particles', 'noise'],
 		technique: 'canvas-2d',
 		params: [

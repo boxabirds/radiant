@@ -858,19 +858,6 @@ export const shaders: Shader[] = [
 		]
 	},
 	{
-		id: 'gilt-origami',
-		file: 'proposal-ana-4.html',
-		title: 'Gilt Origami',
-		desc: 'Abstract metallic planes folding in 3D space with sweeping specular highlights across golden tile faces.',
-		inspiration: 'Ana de Armas',
-		tags: ['fill', 'geometric'],
-		technique: 'webgl',
-		params: [
-			{ name: 'FOLD_SPEED', label: 'Fold Speed', min: 0.1, max: 1.0, step: 0.05, default: 0.3 },
-			{ name: 'METALLIC', label: 'Metallic', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
-		]
-	},
-	{
 		id: 'magnetic-sand',
 		file: 'proposal-ana-5.html',
 		title: 'Magnetic Sand',

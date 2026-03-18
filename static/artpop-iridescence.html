@@ -118,8 +118,7 @@
     '  // Domain warped noise for organic flow',
     '  s += warpedNoise(p*1.2, t) * 0.4;',
     '  // Fine ripples',
-    '  s += snoise(p*4.0 + t*0.2) * 0.08;',
-    '  s += snoise(p*8.0 - t*0.15) * 0.04;',
+    '  s += snoise(p*3.5 + t*0.2) * 0.08;',
     '  return s;',
     '}',
     '',
@@ -260,9 +259,6 @@
     '  float vig = 1.0 - smoothstep(0.35, 1.3, length(p * vec2(0.85, 1.0)));',
     '  col *= 0.6 + 0.4 * vig;',
     '',
-    '  // ---- Film grain for texture ----',
-    '  float grain = (fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233)) + fract(u_time*0.1)*100.0) * 43758.5453) - 0.5) * 0.018;',
-    '  col += grain;',
     '',
     '  // ---- Tone mapping: slight S-curve for richness ----',
     '  col = clamp(col, 0.0, 1.0);',
@@ -306,12 +302,15 @@
   var filmThicknessVal = 1.0;
   var flowSpeedVal = 0.5;
 
-  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var urlParams = new URLSearchParams(window.location.search);
+  var pixelScale = parseFloat(urlParams.get('p')) || 1;
+  var dpr = 1;
   var running = true;
 
   function resize() {
-    var w = Math.round(canvas.clientWidth * dpr);
-    var h = Math.round(canvas.clientHeight * dpr);
+    var scale = 1.0 / pixelScale;
+    var w = Math.round(canvas.clientWidth * dpr * scale);
+    var h = Math.round(canvas.clientHeight * dpr * scale);
     if (canvas.width !== w || canvas.height !== h) {
       canvas.width = w;
       canvas.height = h;

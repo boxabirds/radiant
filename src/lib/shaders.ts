@@ -633,7 +633,14 @@ export const shaders: Shader[] = [
 			{ name: 'SHAPE', label: 'Shape', min: 1, max: 4, step: 1, default: 1 },
 			{ name: 'FLICKER_RATE', label: 'Flicker Rate', min: 0.1, max: 1.0, step: 0.05, default: 0.5 },
 			{ name: 'GLOW_SPREAD', label: 'Glow Spread', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
-		]
+		],
+		heroConfig: {
+			params: [
+				{ name: 'CENTER_X', value: 0.68 },
+				{ name: 'CENTER_Y', value: 0.5 },
+				{ name: 'SCALE', value: 0.55 }
+			]
+		}
 	},
 	{
 		id: 'lipstick-smear',
@@ -698,7 +705,14 @@ export const shaders: Shader[] = [
 		params: [
 			{ name: 'ROTATION_SPEED', label: 'Rotation Speed', min: 0.1, max: 2.0, step: 0.05, default: 0.5 },
 			{ name: 'GEAR_DETAIL', label: 'Gear Detail', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
-		]
+		],
+		heroConfig: {
+			params: [
+				{ name: 'CENTER_X', value: 0.68 },
+				{ name: 'CENTER_Y', value: 0.5 },
+				{ name: 'SCALE', value: 0.7 }
+			]
+		}
 	},
 	{
 		id: 'edge-of-chaos',
@@ -752,7 +766,14 @@ export const shaders: Shader[] = [
 			{ name: 'REFRACTION', label: 'Prismatic', min: 0.0, max: 2.0, step: 0.1, default: 1.0 },
 			{ name: 'TILT_X', label: 'Tilt X', min: -1.5, max: 1.5, step: 0.1, default: 0.0 },
 			{ name: 'TILT_Y', label: 'Tilt Y', min: -0.5, max: 0.5, step: 0.1, default: 0.0 }
-		]
+		],
+		heroConfig: {
+			params: [
+				{ name: 'CENTER_X', value: 0.68 },
+				{ name: 'CENTER_Y', value: 0.45 },
+				{ name: 'SCALE', value: 0.55 }
+			]
+		}
 	},
 	{
 		id: 'kaleidoscope-runway',
@@ -868,8 +889,16 @@ export const shaders: Shader[] = [
 		technique: 'canvas-2d',
 		params: [
 			{ name: 'DRAW_SPEED', label: 'Draw Speed', min: 0.3, max: 3.0, step: 0.1, default: 1.0 },
-			{ name: 'LINE_BRIGHTNESS', label: 'Brightness', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
-		]
+			{ name: 'LINE_BRIGHTNESS', label: 'Brightness', min: 0.3, max: 2.0, step: 0.1, default: 1.0 },
+			{ name: 'SHAPE', label: 'Shape', min: 1, max: 7, step: 1, default: 1 }
+		],
+		heroConfig: {
+			params: [
+				{ name: 'CENTER_X', value: 0.68 },
+				{ name: 'CENTER_Y', value: 0.5 },
+				{ name: 'SCALE', value: 0.65 }
+			]
+		}
 	},
 	{
 		id: 'magnetic-sand',
@@ -1041,7 +1070,14 @@ export const shaders: Shader[] = [
 		params: [
 			{ name: 'ROTATION_SPEED', label: 'Rotation Speed', min: 0.05, max: 1.0, step: 0.05, default: 0.3 },
 			{ name: 'PROJECTION_DEPTH', label: 'Projection Depth', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
-		]
+		],
+		heroConfig: {
+			params: [
+				{ name: 'CENTER_X', value: 0.68 },
+				{ name: 'CENTER_Y', value: 0.5 },
+				{ name: 'SCALE', value: 0.7 }
+			]
+		}
 	},
 	{
 		id: 'moire-interference',

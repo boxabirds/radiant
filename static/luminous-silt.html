@@ -46,7 +46,7 @@
   var particleCount;
 
   // ── Particle data in typed arrays ──
-  var posX, posY, velScale, brightnessIdx;
+  var posX, posY, velScale, brightnessIdx, isSparkle;
 
   // ── Noise implementation ──
   // Perlin-style hash-based 2D value noise
@@ -95,86 +95,96 @@
     return nx0 + v * (nx1 - nx0);
   }
 
-  // 2-octave FBM
-  function fbm2(x, y) {
-    return noise2D(x, y) * 0.667 + noise2D(x * 2.0, y * 2.0) * 0.333;
-  }
-
   initNoise(42);
 
-  // ── Color palette: INSOMNIA-inspired ──
-  // 5 colors x 4 alpha levels = 20 pre-computed fill styles
-  var COLORS = [
-    [26, 51, 179],    // deep cobalt blue
-    [217, 102, 26],   // warm burnt orange
-    [179, 204, 255],  // cool white-blue
-    [230, 153, 51],   // amber gold
-    [26, 128, 128]    // teal
-  ];
-  var NUM_COLORS = COLORS.length;
-  var ALPHA_LEVELS = [0.012, 0.018, 0.025, 0.035];
+  // ── Color gradient corners ──
+  // Bilinear interpolation across canvas with slow rotation
+  var CORNER_TL = [50, 80, 220];     // deep cobalt blue
+  var CORNER_TR = [180, 70, 140];    // rose/violet
+  var CORNER_BL = [40, 170, 170];    // teal
+  var CORNER_BR = [240, 150, 50];    // amber/orange
+  var CENTER_C  = [230, 215, 190];   // warm white
+
+  var ALPHA_LEVELS = [0.03, 0.045, 0.06, 0.09, 0.18, 0.27];
   var NUM_ALPHAS = ALPHA_LEVELS.length;
+  var NUM_NORMAL_ALPHAS = 4; // first 4 are normal, last 2 are sparkle-only
+
+  // ── Quantized color palette for bucketing ──
+  // Discretize the gradient into a grid of color cells
+  var COLOR_GRID_SIZE = 12; // 12x12 = 144 color cells
+  var NUM_COLORS = COLOR_GRID_SIZE * COLOR_GRID_SIZE;
+  var NUM_BUCKETS = NUM_COLORS * NUM_ALPHAS;
 
   // COLOR_STRINGS[colorIdx * NUM_ALPHAS + alphaIdx]
-  var COLOR_STRINGS = new Array(NUM_COLORS * NUM_ALPHAS);
-  for (var ci = 0; ci < NUM_COLORS; ci++) {
-    for (var ai = 0; ai < NUM_ALPHAS; ai++) {
-      COLOR_STRINGS[ci * NUM_ALPHAS + ai] = 'rgba(' + COLORS[ci][0] + ',' + COLORS[ci][1] + ',' + COLORS[ci][2] + ',' + ALPHA_LEVELS[ai] + ')';
-    }
+  var COLOR_STRINGS = new Array(NUM_BUCKETS);
+
+  // Compute gradient color for normalized coordinates (0-1)
+  // with center blending and corner rotation
+  function gradientColor(nx, ny, rotAngle) {
+    // Rotate the corner assignment
+    var cos_r = Math.cos(rotAngle);
+    var sin_r = Math.sin(rotAngle);
+    // Rotate UV around center
+    var cx = nx - 0.5;
+    var cy = ny - 0.5;
+    var rx = cx * cos_r - cy * sin_r + 0.5;
+    var ry = cx * sin_r + cy * cos_r + 0.5;
+    // Clamp rotated coords
+    rx = rx < 0 ? 0 : rx > 1 ? 1 : rx;
+    ry = ry < 0 ? 0 : ry > 1 ? 1 : ry;
+
+    // Bilinear interpolation of corners
+    var r = CORNER_TL[0] * (1 - rx) * (1 - ry)
+          + CORNER_TR[0] * rx * (1 - ry)
+          + CORNER_BL[0] * (1 - rx) * ry
+          + CORNER_BR[0] * rx * ry;
+    var g = CORNER_TL[1] * (1 - rx) * (1 - ry)
+          + CORNER_TR[1] * rx * (1 - ry)
+          + CORNER_BL[1] * (1 - rx) * ry
+          + CORNER_BR[1] * rx * ry;
+    var b = CORNER_TL[2] * (1 - rx) * (1 - ry)
+          + CORNER_TR[2] * rx * (1 - ry)
+          + CORNER_BL[2] * (1 - rx) * ry
+          + CORNER_BR[2] * rx * ry;
+
+    // Blend toward warm white center based on proximity to center
+    var distFromCenter = Math.sqrt(cx * cx + cy * cy) * 2; // 0 at center, ~1.4 at corner
+    var centerWeight = 1 - Math.min(distFromCenter, 1);
+    centerWeight = centerWeight * centerWeight; // sharpen falloff
+    r = r + (CENTER_C[0] - r) * centerWeight;
+    g = g + (CENTER_C[1] - g) * centerWeight;
+    b = b + (CENTER_C[2] - b) * centerWeight;
+
+    return [(r + 0.5) | 0, (g + 0.5) | 0, (b + 0.5) | 0];
   }
 
-  // ── Bucketing: fixed-size typed arrays to avoid GC ──
-  // Each bucket stores particle indices; bucketLen tracks count per bucket
-  var NUM_BUCKETS = NUM_COLORS * NUM_ALPHAS;
-  var bucketData;   // Uint32Array, flat: each bucket gets MAX_PER_BUCKET slots
-  var bucketLen;    // Uint32Array[NUM_BUCKETS], current count in each
-  var MAX_PER_BUCKET;
-
-  function allocBuckets() {
-    // Worst case: all particles in one bucket, but practically spread out
-    // Allocate particleCount total entries, divided evenly + overhead
-    MAX_PER_BUCKET = particleCount;
-    // Use a flat approach: one big array, offset per bucket
-    bucketData = new Uint32Array(NUM_BUCKETS * MAX_PER_BUCKET);
-    bucketLen = new Uint32Array(NUM_BUCKETS);
-  }
-
-  // ── Color zone grid: updated periodically, not per particle ──
-  // Divides canvas into cells, each cell has a color index
-  var ZONE_CELL = 64; // pixels per cell
-  var zoneCols, zoneRows;
-  var zoneGrid; // Uint8Array, color index per cell
-  var zoneUpdateTimer = 0;
-  var ZONE_UPDATE_INTERVAL = 6; // update every N frames
-
-  function buildZoneGrid(t) {
-    zoneCols = Math.ceil(W / ZONE_CELL) + 1;
-    zoneRows = Math.ceil(H / ZONE_CELL) + 1;
-    if (!zoneGrid || zoneGrid.length < zoneCols * zoneRows) {
-      zoneGrid = new Uint8Array(zoneCols * zoneRows);
-    }
-    for (var row = 0; row < zoneRows; row++) {
-      for (var col = 0; col < zoneCols; col++) {
-        var sx = col * ZONE_CELL;
-        var sy = row * ZONE_CELL;
-        var n = fbm2(sx * 0.0008 + t * 0.02, sy * 0.0008 + t * 0.015);
-        var mapped = (n + 1) * 2.5;
-        var idx = mapped | 0;
-        if (idx < 0) idx = 0;
-        if (idx > 4) idx = 4;
-        zoneGrid[row * zoneCols + col] = idx;
+  function rebuildColorStrings(rotAngle) {
+    for (var gy = 0; gy < COLOR_GRID_SIZE; gy++) {
+      for (var gx = 0; gx < COLOR_GRID_SIZE; gx++) {
+        var nx = (gx + 0.5) / COLOR_GRID_SIZE;
+        var ny = (gy + 0.5) / COLOR_GRID_SIZE;
+        var c = gradientColor(nx, ny, rotAngle);
+        var ci = gy * COLOR_GRID_SIZE + gx;
+        for (var ai = 0; ai < NUM_ALPHAS; ai++) {
+          COLOR_STRINGS[ci * NUM_ALPHAS + ai] = 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + ALPHA_LEVELS[ai] + ')';
+        }
       }
     }
   }
 
-  function getZoneFast(px, py) {
-    var col = (px / ZONE_CELL) | 0;
-    var row = (py / ZONE_CELL) | 0;
-    if (col < 0) col = 0;
-    if (col >= zoneCols) col = zoneCols - 1;
-    if (row < 0) row = 0;
-    if (row >= zoneRows) row = zoneRows - 1;
-    return zoneGrid[row * zoneCols + col];
+  rebuildColorStrings(0);
+
+  // ── Bucketing: fixed-size typed arrays to avoid GC ──
+  var bucketData;
+  var bucketLen;
+  var MAX_PER_BUCKET;
+
+  function allocBuckets() {
+    // With 864 buckets and 18K particles, average ~21 per bucket.
+    // Allow generous headroom but not full particleCount per bucket.
+    MAX_PER_BUCKET = Math.ceil(particleCount / NUM_BUCKETS * 8) + 32;
+    bucketData = new Uint32Array(NUM_BUCKETS * MAX_PER_BUCKET);
+    bucketLen = new Uint32Array(NUM_BUCKETS);
   }
 
   // ── Particle initialization ──
@@ -184,12 +194,15 @@
     posY = new Float32Array(particleCount);
     velScale = new Float32Array(particleCount);
     brightnessIdx = new Uint8Array(particleCount);
+    isSparkle = new Uint8Array(particleCount);
 
     for (var i = 0; i < particleCount; i++) {
       posX[i] = Math.random() * W;
       posY[i] = Math.random() * H;
       velScale[i] = 0.3 + Math.random() * 0.7;
-      brightnessIdx[i] = (Math.random() * NUM_ALPHAS) | 0;
+      brightnessIdx[i] = (Math.random() * NUM_NORMAL_ALPHAS) | 0;
+      // ~5% of particles are sparkles — always use highest alpha bucket
+      isSparkle[i] = Math.random() < 0.05 ? 1 : 0;
     }
     allocBuckets();
   }
@@ -206,7 +219,6 @@
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, W, H);
     initParticles();
-    buildZoneGrid(time);
   }
 
   window.addEventListener('resize', resize);
@@ -217,6 +229,9 @@
   var frameCount = 0;
 
   resize();
+
+  // ── Color palette rebuild interval ──
+  var COLOR_REBUILD_INTERVAL = 8; // rebuild color strings every N frames
 
   // ── Main draw loop ──
   function draw() {
@@ -229,13 +244,16 @@
     time += 0.0006 * DRIFT_SPEED * dt;
     frameCount++;
 
-    // Rebuild zone grid periodically (not every frame)
-    if (frameCount % ZONE_UPDATE_INTERVAL === 0) {
-      buildZoneGrid(time);
+    // Slowly rotating color map
+    var rotAngle = time * 0.1;
+
+    // Rebuild quantized color palette periodically as rotation changes
+    if (frameCount % COLOR_REBUILD_INTERVAL === 0) {
+      rebuildColorStrings(rotAngle);
     }
 
     // Fade overlay: semi-transparent black for trailing effect
-    ctx.fillStyle = 'rgba(0,0,0,0.04)';
+    ctx.fillStyle = 'rgba(0,0,0,0.035)';
     ctx.fillRect(0, 0, W, H);
 
     // ── Reset bucket counts ──
@@ -243,8 +261,11 @@
 
     // ── Update particles and assign to buckets ──
     var noiseScale = 0.003;
-    var speed = 0.8 * DRIFT_SPEED;
+    var speed = 1.2 * DRIFT_SPEED;
     var PI2 = Math.PI * 2;
+    var invW = 1 / W;
+    var invH = 1 / H;
+    var gridSize = COLOR_GRID_SIZE;
 
     for (var i = 0; i < particleCount; i++) {
       var px = posX[i];
@@ -267,13 +288,21 @@
       posX[i] = px;
       posY[i] = py;
 
-      // Look up color from zone grid
-      var ci = getZoneFast(px, py);
-      var bi = brightnessIdx[i];
+      // Map particle position to quantized color grid cell
+      var gx = (px * invW * gridSize) | 0;
+      var gy = (py * invH * gridSize) | 0;
+      if (gx >= gridSize) gx = gridSize - 1;
+      if (gy >= gridSize) gy = gridSize - 1;
+      var ci = gy * gridSize + gx;
+
+      // Alpha bucket: sparkle particles use the high-alpha sparkle buckets (indices 4-5)
+      var bi = isSparkle[i] ? (NUM_NORMAL_ALPHAS + ((brightnessIdx[i]) & 1)) : brightnessIdx[i];
       var bucketId = ci * NUM_ALPHAS + bi;
-      var offset = bucketId * MAX_PER_BUCKET + bucketLen[bucketId];
-      bucketData[offset] = i;
-      bucketLen[bucketId]++;
+      var bLen = bucketLen[bucketId];
+      if (bLen < MAX_PER_BUCKET) {
+        bucketData[bucketId * MAX_PER_BUCKET + bLen] = i;
+        bucketLen[bucketId] = bLen + 1;
+      }
     }
 
     // ── Draw particles batched by color+alpha ──
@@ -286,7 +315,7 @@
 
       for (var k = 0; k < count; k++) {
         var idx = bucketData[baseOffset + k];
-        ctx.fillRect(posX[idx], posY[idx], 1.5, 1.5);
+        ctx.fillRect(posX[idx], posY[idx], 2, 2);
       }
     }
 

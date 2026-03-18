@@ -45,6 +45,9 @@
   // Parameters
   var ROTATION_SPEED = 0.3;
   var PROJECTION_DEPTH = 1.0;
+  var HERO_CENTER_X = 0;
+  var HERO_CENTER_Y = 0;
+  var HERO_SCALE = 0;
 
   var width, height, cx, cy, dpr;
 
@@ -55,8 +58,8 @@
     canvas.width = width * dpr;
     canvas.height = height * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    cx = width / 2;
-    cy = height / 2;
+    cx = HERO_SCALE > 0 ? width * HERO_CENTER_X : width / 2;
+    cy = HERO_SCALE > 0 ? height * HERO_CENTER_Y : height / 2;
   }
   window.addEventListener('resize', resize);
   resize();
@@ -247,6 +250,7 @@
     resize();
 
     var scale = Math.min(width, height) * 0.28;
+    if (HERO_SCALE > 0) scale *= HERO_SCALE;
 
     // Breathing projection depth: slow oscillation
     var breathe = Math.sin(time * 0.15) * 0.25 + Math.sin(time * 0.37) * 0.1;
@@ -599,6 +603,9 @@
       switch (e.data.name) {
         case 'ROTATION_SPEED': ROTATION_SPEED = e.data.value; break;
         case 'PROJECTION_DEPTH': PROJECTION_DEPTH = e.data.value; break;
+        case 'CENTER_X': HERO_CENTER_X = e.data.value; resize(); break;
+        case 'CENTER_Y': HERO_CENTER_Y = e.data.value; resize(); break;
+        case 'SCALE': HERO_SCALE = e.data.value; resize(); break;
       }
     }
   });

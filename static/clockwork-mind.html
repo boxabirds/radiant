@@ -42,6 +42,9 @@
   let GEAR_DETAIL = 1.0;
 
   var width, height, dpr, cx, cy;
+  var HERO_CENTER_X = 0;
+  var HERO_CENTER_Y = 0;
+  var HERO_SCALE = 0;
 
   function resize() {
     dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -52,8 +55,8 @@
     canvas.style.width = width + 'px';
     canvas.style.height = height + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    cx = width / 2;
-    cy = height / 2;
+    cx = HERO_SCALE > 0 ? width * HERO_CENTER_X : width / 2;
+    cy = HERO_SCALE > 0 ? height * HERO_CENTER_Y : height / 2;
   }
 
   window.addEventListener('resize', resize);
@@ -90,6 +93,7 @@
   function buildGearSystem() {
     var minDim = Math.min(width, height) / _pad;
     scale = minDim / 700;
+    if (HERO_SCALE > 0) scale *= HERO_SCALE;
 
     // Module in px: determines tooth size. All gears share same module for correct meshing.
     // pitchRadius = (teeth * mod) / 2, so mod = 2 * pitchRadius / teeth
@@ -808,6 +812,9 @@
       switch (e.data.name) {
         case 'ROTATION_SPEED': ROTATION_SPEED = e.data.value; break;
         case 'GEAR_DETAIL': GEAR_DETAIL = e.data.value; break;
+        case 'CENTER_X': HERO_CENTER_X = e.data.value; resize(); buildGearSystem(); break;
+        case 'CENTER_Y': HERO_CENTER_Y = e.data.value; resize(); buildGearSystem(); break;
+        case 'SCALE': HERO_SCALE = e.data.value; resize(); buildGearSystem(); break;
       }
     }
   });

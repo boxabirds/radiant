@@ -89,6 +89,8 @@
     'uniform float u_refraction;',
     'uniform float u_rotX;',
     'uniform float u_rotY;',
+    'uniform vec2 u_center;',
+    'uniform float u_scale;',
     '',
     '#define PI 3.14159265359',
     '#define TAU 6.28318530718',
@@ -400,7 +402,9 @@
     '}',
     '',
     'void main() {',
-    '  vec2 uv = (gl_FragCoord.xy - u_res * 0.5) / min(u_res.x, u_res.y);',
+    '  vec2 origin = u_scale > 0.0 ? u_center : vec2(0.5);',
+    '  float sc = u_scale > 0.0 ? u_scale : 1.0;',
+    '  vec2 uv = (gl_FragCoord.xy - u_res * origin) / (min(u_res.x, u_res.y) * sc);',
     '  float t = u_time;',
     '  float slowT = t * 0.2;',
     '  ',
@@ -602,6 +606,11 @@
   var uRefraction = gl.getUniformLocation(prog, 'u_refraction');
   var uRotX = gl.getUniformLocation(prog, 'u_rotX');
   var uRotY = gl.getUniformLocation(prog, 'u_rotY');
+  var uCenter = gl.getUniformLocation(prog, 'u_center');
+  var uScale = gl.getUniformLocation(prog, 'u_scale');
+  var centerX = 0.0;
+  var centerY = 0.0;
+  var scaleVal = 0.0;
 
   var growthSpeedVal = 1.0;
   var refractionVal = 1.0;
@@ -628,6 +637,8 @@
     gl.uniform1f(uRefraction, refractionVal);
     gl.uniform1f(uRotX, rotX + tiltXVal);
     gl.uniform1f(uRotY, rotY + tiltYVal);
+    gl.uniform2f(uCenter, centerX, centerY);
+    gl.uniform1f(uScale, scaleVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }
@@ -649,6 +660,9 @@
         case 'REFRACTION': refractionVal = e.data.value; break;
         case 'TILT_X': tiltXVal = e.data.value; break;
         case 'TILT_Y': tiltYVal = e.data.value; break;
+        case 'CENTER_X': centerX = e.data.value; break;
+        case 'CENTER_Y': centerY = e.data.value; break;
+        case 'SCALE': scaleVal = e.data.value; break;
       }
     }
   });

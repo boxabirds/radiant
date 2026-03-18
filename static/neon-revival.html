@@ -53,6 +53,8 @@
     'uniform float u_glowIntensity;',
     'uniform float u_flickerRate;',
     'uniform float u_shape;',
+    'uniform vec2 u_center;',
+    'uniform float u_scale;',
     '',
     '#define PI 3.14159265359',
     '#define TAU 6.28318530718',
@@ -213,7 +215,9 @@
     '',
     '// ── Scene composition ──',
     'void main() {',
-    '  vec2 uv = (gl_FragCoord.xy - u_res * 0.5) / min(u_res.x, u_res.y);',
+    '  vec2 origin = u_scale > 0.0 ? u_center : vec2(0.5);',
+    '  float sc = u_scale > 0.0 ? u_scale : 1.0;',
+    '  vec2 uv = (gl_FragCoord.xy - u_res * origin) / (min(u_res.x, u_res.y) * sc);',
     '  float aspect = u_res.x / u_res.y;',
     '  float t = u_time;',
     '',
@@ -715,10 +719,15 @@
   var uGlowIntensity = gl.getUniformLocation(prog, 'u_glowIntensity');
   var uFlickerRate = gl.getUniformLocation(prog, 'u_flickerRate');
   var uShape = gl.getUniformLocation(prog, 'u_shape');
+  var uCenter = gl.getUniformLocation(prog, 'u_center');
+  var uScale = gl.getUniformLocation(prog, 'u_scale');
 
   var glowIntensityVal = 1.0;
   var flickerRateVal = 0.5;
   var shapeVal = 1;
+  var centerX = 0.0;
+  var centerY = 0.0;
+  var scaleVal = 0.0;
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2) * pixelScale;
 
@@ -739,6 +748,8 @@
     gl.uniform1f(uGlowIntensity, glowIntensityVal);
     gl.uniform1f(uFlickerRate, flickerRateVal);
     gl.uniform1f(uShape, shapeVal);
+    gl.uniform2f(uCenter, centerX, centerY);
+    gl.uniform1f(uScale, scaleVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }
@@ -759,6 +770,9 @@
       switch (e.data.name) {
         case 'GLOW_INTENSITY': glowIntensityVal = e.data.value; break;
         case 'FLICKER_RATE': flickerRateVal = e.data.value; break;
+        case 'CENTER_X': centerX = e.data.value; break;
+        case 'CENTER_Y': centerY = e.data.value; break;
+        case 'SCALE': scaleVal = e.data.value; break;
         case 'SHAPE': shapeVal = e.data.value; break;
       }
     }

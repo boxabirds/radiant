@@ -42,6 +42,9 @@
   var BRIGHTNESS = 1.0;
 
   var width, height, dpr, cx, cy, minDim;
+  var HERO_CENTER_X = 0;
+  var HERO_CENTER_Y = 0;
+  var HERO_SCALE = 0;
 
   // ── Offscreen burn layer — persistent scorched trails ──
   var burnCanvas = document.createElement('canvas');
@@ -71,8 +74,8 @@
     heatCanvas.height = Math.round(height * dpr);
     heatCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    cx = width / 2;
-    cy = height / 2;
+    cx = HERO_SCALE > 0 ? width * HERO_CENTER_X : width / 2;
+    cy = HERO_SCALE > 0 ? height * HERO_CENTER_Y : height / 2;
     minDim = Math.min(width, height);
   }
 
@@ -136,13 +139,16 @@
 
   function generateShapeSet() {
     var scale = minDim * 0.55 / _pad;
+    if (HERO_SCALE > 0) scale *= HERO_SCALE;
     var set = [];
 
     switch (shapeIndex % 7) {
       case 0:
-        set.push(makePolygon(cx, cy, scale * 0.85, 3, -Math.PI / 2));
-        set.push(makeCircle(cx, cy, scale * 0.42, 48));
-        set.push(makePolygon(cx, cy, scale * 0.35, 3, Math.PI / 2));
+        // Shift down by r/4 to visually center the triangle composition
+        var triOff = scale * 0.85 * 0.25;
+        set.push(makePolygon(cx, cy + triOff, scale * 0.85, 3, -Math.PI / 2));
+        set.push(makeCircle(cx, cy + triOff, scale * 0.42, 48));
+        set.push(makePolygon(cx, cy + triOff, scale * 0.35, 3, Math.PI / 2));
         break;
       case 1:
         set.push(makeDiamond(cx, cy, scale * 0.7, scale * 0.85));
@@ -796,6 +802,10 @@
       switch (e.data.name) {
         case 'DRAW_SPEED': DRAW_SPEED = e.data.value; break;
         case 'BRIGHTNESS': BRIGHTNESS = e.data.value; break;
+        case 'SHAPE': shapeIndex = Math.round(e.data.value) - 1; startNewShape(); break;
+        case 'CENTER_X': HERO_CENTER_X = e.data.value; resize(); startNewShape(); break;
+        case 'CENTER_Y': HERO_CENTER_Y = e.data.value; resize(); startNewShape(); break;
+        case 'SCALE': HERO_SCALE = e.data.value; resize(); startNewShape(); break;
       }
     }
   });

@@ -314,8 +314,34 @@ export const shaders: Shader[] = [
 		technique: 'webgl',
 		params: [
 			{ name: 'ROTATION_SPEED', label: 'Rotation Speed', min: 0.05, max: 1.0, step: 0.05, default: 0.3 },
+			{ name: 'PATTERN_COMPLEXITY', label: 'Complexity', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
+		]
+	},
+	{
+		id: 'golden-throne',
+		file: 'golden-throne.html',
+		title: 'Golden Throne',
+		desc: 'Sacred geometry mandala with golden ratio spirals and counter-rotating layers.',
+		inspiration: 'Beyoncé',
+		tags: ['object', 'geometric'],
+		technique: 'webgl',
+		params: [
+			{ name: 'ROTATION_SPEED', label: 'Rotation Speed', min: 0.0, max: 1.0, step: 0.05, default: 0.3 },
+			{ name: 'COMPLEXITY', label: 'Complexity', min: 2, max: 8, step: 1, default: 5 }
+		]
+	},
+	{
+		id: 'sacred-strange',
+		file: 'sacred-strange.html',
+		title: 'Sacred Strange',
+		desc: 'Fractal golden geometry with overlapping star motifs creating Doctor Strange-like dimensional patterns.',
+		inspiration: 'Beyoncé',
+		tags: ['fill', 'geometric'],
+		technique: 'webgl',
+		params: [
+			{ name: 'ROTATION_SPEED', label: 'Rotation Speed', min: 0.05, max: 1.0, step: 0.05, default: 0.3 },
 			{ name: 'PATTERN_COMPLEXITY', label: 'Complexity', min: 0.3, max: 2.0, step: 0.1, default: 1.0 },
-			{ name: 'PATTERN', label: 'Pattern', min: 0.0, max: 1.0, step: 0.05, default: 0.0 }
+			{ name: 'PATTERN', label: 'Dimensional Shift', min: 0.0, max: 0.15, step: 0.01, default: 0.05 }
 		]
 	},
 	{

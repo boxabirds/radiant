@@ -22,7 +22,7 @@ export const colorSchemes: ColorScheme[] = [
 		id: 'blue',
 		name: 'Blue',
 		swatch: '#6c8ec8',
-		filter: 'hue-rotate(200deg)'
+		filter: 'hue-rotate(175deg)'
 	},
 	{
 		id: 'rose',
@@ -34,7 +34,7 @@ export const colorSchemes: ColorScheme[] = [
 		id: 'emerald',
 		name: 'Emerald',
 		swatch: '#6cc889',
-		filter: 'hue-rotate(120deg)'
+		filter: 'hue-rotate(90deg) saturate(1.2)'
 	},
 	{
 		id: 'arctic',

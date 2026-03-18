@@ -52,6 +52,9 @@
     'uniform float u_lightSpeed;',
     'uniform float u_tileScale;',
     'uniform float u_animMode;',
+    'uniform float u_waveSpeed;',
+    'uniform float u_waveDelay;',
+    'uniform float u_waveDir;',
     '',
     '#define PI 3.14159265359',
     '#define TAU 6.28318530718',
@@ -122,17 +125,41 @@
     '  return n1 * 0.6 + n2 * 0.4;',
     '}',
     '',
-    '// ── Wave flip: compute flip amount for a tile ──',
-    'float waveFlip(vec2 tileCenter, float t, float aspect) {',
-    '  // Wave sweeps left to right, repeating every ~5 seconds',
-    '  float waveX = fract(t * 0.2) * (aspect + 1.8) - 0.9;',
-    '  // Per-tile random delay — subtle for organized but organic feel',
+    '// ── Wave flip: configurable direction, speed, delay ──',
+    '// dir: 0=left-to-right, 1=right-to-left, 2=top-to-bottom, 3=bottom-to-top',
+    'vec2 waveFlip(vec2 tileCenter, float rawTime, vec2 aspect) {',
+    '  float sweepDur = u_waveSpeed;',
+    '  float cycleDur = sweepDur + u_waveDelay;',
+    '  float cycleT = mod(rawTime, cycleDur);',
+    '  float waveCount = floor(rawTime / cycleDur);',
+    '  float isOddWave = mod(waveCount, 2.0);',
+    '  ',
+    '  // Ease-in-out cubic for smooth sweep',
+    '  float sweepRaw = clamp(cycleT / sweepDur, 0.0, 1.0);',
+    '  float sweep = sweepRaw * sweepRaw * (3.0 - 2.0 * sweepRaw);',
+    '  ',
+    '  // Direction: project tile position onto wave axis',
+    '  float dir = floor(u_waveDir + 0.5);',
+    '  float axisLen = aspect.x;',
+    '  float tilePos = tileCenter.x;',
+    '  if (dir == 1.0) { tilePos = aspect.x - tileCenter.x; }',
+    '  else if (dir == 2.0) { tilePos = 1.0 - tileCenter.y; axisLen = 1.0; }',
+    '  else if (dir == 3.0) { tilePos = tileCenter.y; axisLen = 1.0; }',
+    '  ',
+    '  float waveX = sweep * (axisLen + 0.6) - 0.3;',
+    '  ',
+    '  // Per-tile stagger',
     '  float tileRand = hash(tileCenter * 31.7 + vec2(17.3, 59.1));',
-    '  float stagger = tileRand * 0.12;',
-    '  float dist = tileCenter.x - waveX + stagger;',
-    '  // Smooth wave pulse — wide enough to look like a rolling wave',
-    '  float flipAmount = smoothstep(0.15, 0.0, dist) * smoothstep(-0.5, -0.1, dist);',
-    '  return flipAmount;',
+    '  float stagger = tileRand * 0.06;',
+    '  float dist = tilePos - waveX + stagger;',
+    '  ',
+    '  // Wide wave front',
+    '  float flipProgress = smoothstep(0.5, -0.3, dist);',
+    '  float flipAngle = (isOddWave + flipProgress) * PI;',
+    '  ',
+    '  // Transition intensity',
+    '  float inTransition = smoothstep(0.6, 0.0, abs(dist + 0.1));',
+    '  return vec2(flipAngle, inTransition);',
     '}',
     '',
     'void main() {',
@@ -167,36 +194,49 @@
     '',
     '  // ── Wave flip animation with 3D perspective ──',
     '  vec2 tileCenter = (id + 0.5) / scale;',
-    '  float flipAmt = waveFlip(tileCenter, t, aspect.x) * u_animMode;',
+    '  vec2 flipData = waveFlip(tileCenter, u_time, aspect);',
+    '  float flipAngle = flipData.x * u_animMode;',
+    '  float inTransition = flipData.y * u_animMode;',
     '',
-    '  // Flip angle: 0 -> PI -> 0 as wave passes (full 180° flip)',
-    '  float flipAngle = flipAmt * PI;',
     '  float cosFlip = cos(flipAngle);',
     '  float abscos = abs(cosFlip);',
+    '  float dir = floor(u_waveDir + 0.5);',
+    '  bool flipVertical = (dir == 2.0 || dir == 3.0);',
     '',
-    '  // 3D perspective: compress tile width by cos(flipAngle)',
-    '  // At 90° the tile is edge-on (thin line), then expands showing "back"',
-    '  float fCenter = 0.5;',
-    '  f.x = (f.x - fCenter) / max(abscos, 0.04) + fCenter;',
-    '',
-    '  // Kill pixels that fall outside tile bounds during compression',
-    '  float inBounds = step(0.0, f.x) * step(f.x, 1.0);',
+    '  // 3D perspective: compress tile along flip axis',
+    '  if (flipVertical) {',
+    '    f.y = (f.y - 0.5) / max(abscos, 0.04) + 0.5;',
+    '  } else {',
+    '    f.x = (f.x - 0.5) / max(abscos, 0.04) + 0.5;',
+    '  }',
+    '  float inBounds = step(0.0, f.x) * step(f.x, 1.0) * step(0.0, f.y) * step(f.y, 1.0);',
     '  tMask *= inBounds;',
     '',
-    '  // Darken leading edge, brighten trailing (fake depth shading)',
-    '  float edgeShade = mix(1.0, 0.5 + 0.5 * cosFlip, flipAmt);',
+    '  // Back side: cosFlip < 0',
+    '  float isBack = step(cosFlip, 0.0);',
     '',
-    '  // Back side detection: cosFlip < 0 means we see the back',
-    '  float isBack = step(cosFlip, 0.0) * flipAmt;',
-    '',
-    '  // Rotate normal for lighting',
+    '  // Rotate normal around flip axis (Y for horizontal, X for vertical)',
     '  float sinFlip = sin(flipAngle);',
-    '  vec3 flippedN = vec3(',
-    '    N.x * cosFlip + N.z * sinFlip,',
-    '    N.y,',
-    '    -N.x * sinFlip + N.z * cosFlip',
-    '  );',
+    '  vec3 flippedN;',
+    '  if (flipVertical) {',
+    '    flippedN = vec3(N.x, N.y * cosFlip + N.z * sinFlip, -N.y * sinFlip + N.z * cosFlip);',
+    '  } else {',
+    '    flippedN = vec3(N.x * cosFlip + N.z * sinFlip, N.y, -N.x * sinFlip + N.z * cosFlip);',
+    '  }',
     '  N = normalize(mix(N, flippedN, u_animMode));',
+    '',
+    '  // Back side: generate fresh normal facing camera with different variation',
+    '  if (isBack > 0.5) {',
+    '    vec3 backN = tileNormal(id + 500.0);',
+    '    float backRough = tileRoughness(f, id + 500.0);',
+    '    backN = normalize(backN + vec3(',
+    '      (backRough - 0.5) * 0.15,',
+    '      (noise(f * 14.0 + id * 3.7) - 0.5) * 0.15,',
+    '      0.0',
+    '    ));',
+    '    N = backN;',
+    '    roughness = backRough;',
+    '  }',
     '',
     '  // ── Moving light sources ──',
     '  // Light 1: main overhead sweep (slow figure-eight)',
@@ -255,8 +295,8 @@
     '  diffTotal *= breathe;',
     '',
     '  // ── Wave flip: 3D shading + golden flash on back side ──',
-    '  float flipFlash = isBack * smoothstep(0.3, 0.7, flipAmt);',
-    '  float flipGlow = flipAmt * flipAmt * 0.4;',
+    '  float flipFlash = isBack * smoothstep(0.3, 0.7, inTransition);',
+    '  float flipGlow = inTransition * inTransition * 0.3;',
     '',
     '  // ── Per-tile shimmer (individual tiles catch light at random moments) ──',
     '  float shimmerPhase = tileHash * TAU + t * (0.8 + tileHash2 * 1.5);',
@@ -301,13 +341,13 @@
     '  tileColor += shimmerColor * shimmerTotal * 0.7;',
     '',
     '  // ── Wave flip: 3D depth shading ──',
-    '  tileColor *= edgeShade;',
-    '  // Back-side golden flash',
-    '  vec3 flipFlashColor = mix(flashGold, hotGold, flipFlash);',
-    '  tileColor += flipFlashColor * flipFlash * 2.0 * u_animMode;',
-    '  // Edge-on glow (thin bright line when tile is perpendicular)',
-    '  float edgeOnGlow = (1.0 - abscos) * flipAmt;',
-    '  tileColor += hotGold * edgeOnGlow * 0.8 * u_animMode;',
+    '  float flipShade = mix(1.0, abscos * 0.7 + 0.3, inTransition);',
+    '  tileColor *= flipShade;',
+    '  // Back side: warmer golden tint to differentiate front/back',
+    '  tileColor = mix(tileColor, tileColor * vec3(1.2, 1.05, 0.85), isBack * 0.6);',
+    '  // Edge-on glow (thin bright line at the moment of flip)',
+    '  float edgeOnGlow = pow(1.0 - abscos, 4.0) * inTransition;',
+    '  tileColor += medGold * edgeOnGlow * 0.25 * u_animMode;',
     '',
     '  // ── Micro-facet sparkle within tiles ──',
     '  // Small bright point when roughness noise aligns with light',
@@ -380,10 +420,16 @@
   var uLightSpeed = gl.getUniformLocation(prog, 'u_lightSpeed');
   var uTileScale = gl.getUniformLocation(prog, 'u_tileScale');
   var uAnimMode = gl.getUniformLocation(prog, 'u_animMode');
+  var uWaveSpeed = gl.getUniformLocation(prog, 'u_waveSpeed');
+  var uWaveDelay = gl.getUniformLocation(prog, 'u_waveDelay');
+  var uWaveDir = gl.getUniformLocation(prog, 'u_waveDir');
 
   var lightSpeedVal = 0.4;
   var tileScaleVal = 1.0;
   var animModeVal = 1.0;
+  var waveSpeedVal = 4.0;
+  var waveDelayVal = 1.5;
+  var waveDirVal = 0.0;
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2) * pixelScale;
 
@@ -404,6 +450,9 @@
     gl.uniform1f(uLightSpeed, lightSpeedVal);
     gl.uniform1f(uTileScale, tileScaleVal);
     gl.uniform1f(uAnimMode, animModeVal);
+    gl.uniform1f(uWaveSpeed, waveSpeedVal);
+    gl.uniform1f(uWaveDelay, waveDelayVal);
+    gl.uniform1f(uWaveDir, waveDirVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }
@@ -422,6 +471,9 @@
         case 'LIGHT_SPEED': lightSpeedVal = e.data.value; break;
         case 'TILE_SCALE': tileScaleVal = e.data.value; break;
         case 'ANIM_MODE': animModeVal = e.data.value; break;
+        case 'WAVE_SPEED': waveSpeedVal = e.data.value; break;
+        case 'WAVE_DELAY': waveDelayVal = e.data.value; break;
+        case 'WAVE_DIR': waveDirVal = e.data.value; break;
       }
     }
   });

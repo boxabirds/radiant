@@ -3,10 +3,13 @@
 	import Footer from '$lib/components/Footer.svelte';
 	import { colorSchemes, type ColorScheme } from '$lib/color-schemes';
 	import { page } from '$app/stores';
-	import { onMount } from 'svelte';
+	import { onMount, setContext } from 'svelte';
 
 	let { children } = $props();
 	let activeScheme: ColorScheme = $state(colorSchemes[0]);
+
+	// Share active scheme with child pages via context
+	setContext('colorScheme', () => activeScheme);
 	let galleryEl: HTMLElement | undefined = $state(undefined);
 	let galleryInView = $state(false);
 	let sidebarOpen = $state(false);

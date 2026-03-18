@@ -2,6 +2,8 @@
 	import GalleryGrid from '$lib/components/GalleryGrid.svelte';
 	import GalleryHeader from '$lib/components/GalleryHeader.svelte';
 	import { shaders } from '$lib/shaders';
+	import { getContext } from 'svelte';
+	const getScheme = getContext<() => { filter: string }>('colorScheme');
 </script>
 
 <svelte:head>
@@ -9,4 +11,4 @@
 </svelte:head>
 
 <GalleryHeader title="All Shaders" description="{shaders.length} production-ready shaders & effects. Click to explore, configure, and download." count={shaders.length} />
-<GalleryGrid shaders={shaders} />
+<GalleryGrid shaders={shaders} filter={getScheme().filter} />

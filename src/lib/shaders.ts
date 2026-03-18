@@ -961,19 +961,6 @@ export const shaders: Shader[] = [
 		]
 	},
 	{
-		id: 'noir-smoke',
-		file: 'noir-smoke.html',
-		title: 'Noir Smoke',
-		desc: 'Film noir smoke curling through angled light beams with chiaroscuro contrast.',
-		inspiration: 'Scarlett Johansson',
-		tags: ['fill', 'noise'],
-		technique: 'webgl',
-		params: [
-			{ name: 'SMOKE_DENSITY', label: 'Smoke Density', min: 0.2, max: 1.0, step: 0.05, default: 0.7 },
-			{ name: 'LIGHT_ANGLE', label: 'Light Angle', min: 5, max: 45, step: 1, default: 25 }
-		]
-	},
-	{
 		id: 'vinyl-grooves',
 		file: 'vinyl-grooves.html',
 		title: 'Vinyl Grooves',

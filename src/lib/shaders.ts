@@ -909,19 +909,6 @@ export const shaders: Shader[] = [
 		]
 	},
 	{
-		id: 'firefly-meadow',
-		file: 'firefly-meadow.html',
-		title: 'Firefly Meadow',
-		desc: 'Gentle fireflies blinking in synchrony above a dark summer meadow.',
-		inspiration: 'Tom Hanks',
-		tags: ['fill', 'particles', 'organic'],
-		technique: 'canvas-2d',
-		params: [
-			{ name: 'FIREFLY_COUNT', label: 'Firefly Count', min: 15, max: 80, step: 5, default: 45 },
-			{ name: 'BLINK_SPEED', label: 'Blink Speed', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
-		]
-	},
-	{
 		id: 'tectonic',
 		file: 'tectonic.html',
 		title: 'Tectonic',

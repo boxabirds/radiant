@@ -3,6 +3,8 @@
 	import { colorSchemes, type ColorScheme } from '$lib/color-schemes';
 	import ShaderCard from '$lib/components/ShaderCard.svelte';
 	import Hero from '$lib/components/Hero.svelte';
+	import HowToUse from '$lib/components/HowToUse.svelte';
+	import Changelog from '$lib/components/Changelog.svelte';
 	import Pricing from '$lib/components/Pricing.svelte';
 	import Footer from '$lib/components/Footer.svelte';
 	import { onMount } from 'svelte';
@@ -59,6 +61,10 @@
 		<a href="/gallery" class="btn btn-solid">Browse Full Collection &rarr;</a>
 	</div>
 </section>
+
+<HowToUse />
+
+<Changelog />
 
 <Pricing />
 

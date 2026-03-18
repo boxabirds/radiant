@@ -135,6 +135,7 @@
 	<div class="content">
 		<h1>Radiant</h1>
 		<p class="tagline">Production-ready shaders & effects for the web. No dependencies. Just drop in.</p>
+		<p class="changelog-link"><a href="/#changelog">v1.0 — Initial release with 50+ shaders and effects</a></p>
 		<div class="ctas">
 			<a href="/gallery" class="btn btn-solid">Browse Collection</a>
 			<a href="https://github.com/pbakaus/radiant" class="btn btn-ghost" target="_blank" rel="noopener noreferrer">GitHub</a>
@@ -211,7 +212,8 @@
 		max-width: 600px;
 		pointer-events: none;
 	}
-	.content .ctas {
+	.content .ctas,
+	.content .changelog-link {
 		pointer-events: auto;
 	}
 	h1 {
@@ -227,10 +229,21 @@
 		color: rgba(232, 224, 216, 0.7);
 		line-height: 1.6;
 	}
+	.changelog-link {
+		margin-top: 0.75rem;
+	}
+	.changelog-link a {
+		font-size: 0.78rem;
+		color: rgba(200, 149, 108, 0.5);
+		transition: color 0.2s;
+	}
+	.changelog-link a:hover {
+		color: #c8956c;
+	}
 	.ctas {
 		display: flex;
 		gap: 0.75rem;
-		margin-top: 2rem;
+		margin-top: 1.5rem;
 		flex-wrap: wrap;
 	}
 	.btn {

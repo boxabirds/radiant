@@ -22,7 +22,7 @@
 	</div>
 	<div class="footer-bottom">
 		<a href="https://paulbakaus.com" target="_blank" rel="noopener noreferrer" class="copyright">
-			&copy; 2025 Paul Bakaus
+			&copy; 2026 Paul Bakaus
 		</a>
 		<a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener noreferrer" class="license">
 			MIT License

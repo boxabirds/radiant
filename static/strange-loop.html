@@ -147,17 +147,17 @@ float segT(vec3 p, vec3 a, vec3 b) {
 // ─────────────────────────────────────────────
 // Geometry constants
 // ─────────────────────────────────────────────
-const float BEAM_R = 0.26;
-const float Y_OFF = 0.08;
-const float SMIN_K = 0.42;
+const float BEAM_R = 0.15;
+const float Y_OFF = 0.12;
+const float SMIN_K = 0.42; // unused now but kept for reference
 
 // Triangle constants
-const float TRI_RADIUS = 2.0;
+const float TRI_RADIUS = 1.3;
 // Rectangle constants
-const float RECT_W = 2.2;
-const float RECT_H = 1.5;
+const float RECT_W = 1.4;
+const float RECT_H = 1.0;
 // Hexagon constants
-const float HEX_RADIUS = 1.9;
+const float HEX_RADIUS = 1.2;
 
 // ─────────────────────────────────────────────
 // Scene rotation
@@ -172,131 +172,83 @@ vec3 sceneRot(vec3 p, float time) {
 }
 
 // ─────────────────────────────────────────────
-// Impossible structure SDF with multiple shapes
+// Single-SDF impossible structure
 //
-// Each shape has N beams arranged in a polygon.
-// Each beam slopes from +Y_OFF at its start vertex
-// to -Y_OFF at its end vertex. At each corner the
-// arriving beam (at -Y_OFF) meets the departing beam
-// (at +Y_OFF), and smin smoothly connects them.
-// Following the loop: up,down,up,down... yet you
-// return to the start — the impossible paradox.
+// Instead of blending separate beams, we extrude a
+// square cross-section along a polygon path with a
+// continuously varying Y-offset. This creates ONE
+// seamless surface with zero joints.
+//
+// The Y-offset oscillates: each edge goes from +Y_OFF
+// to -Y_OFF. With an odd number of edges (3, 5...) the
+// offset can't return to its starting value after one
+// loop — that's the impossible paradox.
 // ─────────────────────────────────────────────
 
-// Shape 0: Penrose Triangle (3 beams)
-vec2 triSDF(vec3 p) {
-  float r = TRI_RADIUS;
-  vec3 yU = vec3(0.0, Y_OFF, 0.0);
-  vec3 yD = vec3(0.0, -Y_OFF, 0.0);
+// Find closest point on polygon perimeter and return:
+// .x = distance to cross-section center, .y = beam ID
+// For N-gon: vertices equally spaced on a circle
+vec2 impossibleSDF(vec3 p, int N, float radius) {
+  // We'll check each edge and find the closest one
+  float bestDist = 1e6;
+  float bestId = 0.0;
 
-  // 3 vertices equally spaced, rotated so top vertex points up
-  float a0 = PI * 0.5;
-  float a1 = a0 + TAU / 3.0;
-  float a2 = a1 + TAU / 3.0;
-  vec3 v0 = vec3(cos(a0) * r, 0.0, sin(a0) * r);
-  vec3 v1 = vec3(cos(a1) * r, 0.0, sin(a1) * r);
-  vec3 v2 = vec3(cos(a2) * r, 0.0, sin(a2) * r);
+  // Unrolled loop for WebGL1 (max 6 sides)
+  for (int i = 0; i < 6; i++) {
+    if (i >= N) break;
 
-  // Each beam: start at vertex + yU, end at next vertex + yD
-  float d0 = sdBoxBeam(p, v0 + yU, v1 + yD, BEAM_R, BEAM_R);
-  float d1 = sdBoxBeam(p, v1 + yU, v2 + yD, BEAM_R, BEAM_R);
-  float d2 = sdBoxBeam(p, v2 + yU, v0 + yD, BEAM_R, BEAM_R);
+    float fi = float(i);
+    float fn = float(N);
+    float angleOff = (N == 4) ? PI * 0.25 : PI * 0.5; // rotate square 45deg
 
-  // Smooth blend at corners
-  float dMin = smin(d0, smin(d1, d2, SMIN_K), SMIN_K);
+    // Vertex i and vertex (i+1)%N
+    float ai = angleOff + fi * TAU / fn;
+    float aj = angleOff + mod(fi + 1.0, fn) * TAU / fn;
+    vec3 vi = vec3(cos(ai) * radius, 0.0, sin(ai) * radius);
+    vec3 vj = vec3(cos(aj) * radius, 0.0, sin(aj) * radius);
 
-  // Track beam ID for coloring
-  float id = 0.0;
-  if (d1 < d0 && d1 < d2) id = 1.0;
-  if (d2 < d0 && d2 < d1) id = 2.0;
+    // Parameter along this edge [0,1]
+    vec3 edge = vj - vi;
+    float t = clamp(dot(p - vi, edge) / dot(edge, edge), 0.0, 1.0);
 
-  return vec2(dMin, id);
-}
+    // Closest point on edge (in XZ plane)
+    vec3 closest = vi + edge * t;
 
-// Shape 1: Impossible Rectangle (4 beams)
-vec2 rectSDF(vec3 p) {
-  float w = RECT_W;
-  float h = RECT_H;
-  vec3 yU = vec3(0.0, Y_OFF, 0.0);
-  vec3 yD = vec3(0.0, -Y_OFF, 0.0);
+    // Y-offset: smoothly goes from +Y_OFF at t=0 to -Y_OFF at t=1
+    float yOff = mix(Y_OFF, -Y_OFF, t);
+    closest.y = yOff;
 
-  // 4 vertices of rectangle
-  vec3 v0 = vec3(-w, 0.0,  h);
-  vec3 v1 = vec3( w, 0.0,  h);
-  vec3 v2 = vec3( w, 0.0, -h);
-  vec3 v3 = vec3(-w, 0.0, -h);
+    // Distance from p to the cross-section center
+    vec3 diff = p - closest;
 
-  // Each beam slopes from +Y_OFF to -Y_OFF
-  float d0 = sdBoxBeam(p, v0 + yU, v1 + yD, BEAM_R, BEAM_R);
-  float d1 = sdBoxBeam(p, v1 + yU, v2 + yD, BEAM_R, BEAM_R);
-  float d2 = sdBoxBeam(p, v2 + yU, v3 + yD, BEAM_R, BEAM_R);
-  float d3 = sdBoxBeam(p, v3 + yU, v0 + yD, BEAM_R, BEAM_R);
+    // Build local frame for box cross-section
+    vec3 dir = normalize(edge);
+    vec3 up = vec3(0.0, 1.0, 0.0);
+    vec3 right = normalize(cross(dir, up));
 
-  // Smooth blend
-  float dMin = smin(smin(d0, d1, SMIN_K), smin(d2, d3, SMIN_K), SMIN_K);
+    // Box distance in cross-section
+    float dx = abs(dot(diff, right)) - BEAM_R;
+    float dy = abs(diff.y) - BEAM_R;
+    float along = abs(dot(diff, dir)); // shouldn't matter, already clamped
 
-  // Track beam ID
-  float id = 0.0;
-  float best = d0;
-  if (d1 < best) { best = d1; id = 1.0; }
-  if (d2 < best) { best = d2; id = 2.0; }
-  if (d3 < best) { best = d3; id = 3.0; }
+    float d2d = length(max(vec2(dx, dy), 0.0)) + min(max(dx, dy), 0.0);
 
-  return vec2(dMin, id);
-}
+    if (d2d < bestDist) {
+      bestDist = d2d;
+      bestId = fi;
+    }
+  }
 
-// Shape 2: Impossible Hexagon (6 beams)
-vec2 hexSDF(vec3 p) {
-  float r = HEX_RADIUS;
-  vec3 yU = vec3(0.0, Y_OFF, 0.0);
-  vec3 yD = vec3(0.0, -Y_OFF, 0.0);
-
-  // 6 vertices equally spaced, flat-top orientation
-  float a0 = 0.0;
-  float a1 = TAU / 6.0;
-  float a2 = 2.0 * TAU / 6.0;
-  float a3 = 3.0 * TAU / 6.0;
-  float a4 = 4.0 * TAU / 6.0;
-  float a5 = 5.0 * TAU / 6.0;
-
-  vec3 v0 = vec3(cos(a0) * r, 0.0, sin(a0) * r);
-  vec3 v1 = vec3(cos(a1) * r, 0.0, sin(a1) * r);
-  vec3 v2 = vec3(cos(a2) * r, 0.0, sin(a2) * r);
-  vec3 v3 = vec3(cos(a3) * r, 0.0, sin(a3) * r);
-  vec3 v4 = vec3(cos(a4) * r, 0.0, sin(a4) * r);
-  vec3 v5 = vec3(cos(a5) * r, 0.0, sin(a5) * r);
-
-  // 6 beams, each sloping from +Y_OFF to -Y_OFF
-  float d0 = sdBoxBeam(p, v0 + yU, v1 + yD, BEAM_R, BEAM_R);
-  float d1 = sdBoxBeam(p, v1 + yU, v2 + yD, BEAM_R, BEAM_R);
-  float d2 = sdBoxBeam(p, v2 + yU, v3 + yD, BEAM_R, BEAM_R);
-  float d3 = sdBoxBeam(p, v3 + yU, v4 + yD, BEAM_R, BEAM_R);
-  float d4 = sdBoxBeam(p, v4 + yU, v5 + yD, BEAM_R, BEAM_R);
-  float d5 = sdBoxBeam(p, v5 + yU, v0 + yD, BEAM_R, BEAM_R);
-
-  // Smooth blend all 6
-  float dMin = smin(smin(smin(d0, d1, SMIN_K), smin(d2, d3, SMIN_K), SMIN_K),
-                     smin(d4, d5, SMIN_K), SMIN_K);
-
-  // Track beam ID
-  float id = 0.0;
-  float best = d0;
-  if (d1 < best) { best = d1; id = 1.0; }
-  if (d2 < best) { best = d2; id = 2.0; }
-  if (d3 < best) { best = d3; id = 3.0; }
-  if (d4 < best) { best = d4; id = 4.0; }
-  if (d5 < best) { best = d5; id = 5.0; }
-
-  return vec2(dMin, id);
+  return vec2(bestDist, bestId);
 }
 
 vec2 penroseSDF(vec3 p) {
   if (u_shape < 0.5) {
-    return triSDF(p);
+    return impossibleSDF(p, 3, TRI_RADIUS);
   } else if (u_shape < 1.5) {
-    return rectSDF(p);
+    return impossibleSDF(p, 4, RECT_W);
   } else {
-    return hexSDF(p);
+    return impossibleSDF(p, 6, HEX_RADIUS);
   }
 }
 
@@ -607,8 +559,8 @@ void main() {
 
   var rotationSpeedVal = 0.3;
   var flowSpeedVal = 0.5;
-  var tiltVal = 0.65;
-  var zoomVal = 7.2;
+  var tiltVal = 0.45;
+  var zoomVal = 6.5;
   var shapeVal = 0.0;
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2) * pixelScale;

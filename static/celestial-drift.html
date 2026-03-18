@@ -28,7 +28,7 @@
 <canvas id="canvas"></canvas>
 <script>
 // ─────────────────────────────────────────────
-// 18 · Celestial Drift — Canvas 2D particle trails with Keplerian orbits
+// 18 · Celestial Drift — Stored polyline trails with Keplerian orbits
 // ─────────────────────────────────────────────
 (function () {
   var canvas = document.getElementById('canvas');
@@ -44,8 +44,8 @@
   var NUM_BODIES = 7;
 
   // ── Params (match shaders.ts names exactly) ──
-  var gravityStrength = 1.0;  // GRAVITY_STRENGTH: maps to trail persistence
-  var trailLength = 200;      // TRAIL_LENGTH: maps to trail fade speed
+  var gravityStrength = 1.0;  // GRAVITY_STRENGTH: orbit speed multiplier
+  var trailLength = 200;      // TRAIL_LENGTH: trail array size (50-500)
 
   // ── Deterministic hash ──
   function hash(n) {
@@ -111,7 +111,8 @@
       glowRadius: glowRadius,
       r: Math.round(rgb[0] * 255),
       g: Math.round(rgb[1] * 255),
-      b: Math.round(rgb[2] * 255)
+      b: Math.round(rgb[2] * 255),
+      trail: [] // ring buffer of {x, y} in pixel coords
     });
   }
 
@@ -129,10 +130,13 @@
       canvas.height = newH;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       minDim = Math.min(W, H);
-      // Reinitialize backgrounds on resize
       initStarfield();
       initNebula();
-      needsFullRedraw = true;
+      initVignette();
+      // Clear all trails on resize since pixel coords changed
+      for (var i = 0; i < bodies.length; i++) {
+        bodies[i].trail = [];
+      }
     }
   }
 
@@ -200,12 +204,10 @@
   var nebulaCtx = nebulaCanvas.getContext('2d');
 
   function simpleNoise(x, y) {
-    // Simple value noise for nebula
     var ix = Math.floor(x);
     var iy = Math.floor(y);
     var fx = x - ix;
     var fy = y - iy;
-    // Smoothstep
     fx = fx * fx * (3 - 2 * fx);
     fy = fy * fy * (3 - 2 * fy);
     var a = hash(ix * 127.1 + iy * 311.7 + 1000);
@@ -228,7 +230,6 @@
   }
 
   function initNebula() {
-    // Render at lower resolution for performance
     var scale = 4;
     var nw = Math.ceil(W / scale);
     var nh = Math.ceil(H / scale);
@@ -240,12 +241,10 @@
 
     for (var py = 0; py < nh; py++) {
       for (var px = 0; px < nw; px++) {
-        // Normalized coords
         var nx = (px / nw - 0.5) * 2;
         var ny = (py / nh - 0.5) * 2;
         var n = fbmNoise(nx * 2, ny * 2);
         var intensity = Math.max(0, n - 0.35) * 0.15;
-        // Very subtle warm nebula tint
         var idx = (py * nw + px) * 4;
         data[idx] = Math.min(255, Math.round(60 * intensity * 255));
         data[idx + 1] = Math.min(255, Math.round(35 * intensity * 255));
@@ -287,7 +286,7 @@
   function drawStarTwinkle(time) {
     for (var i = 0; i < NUM_STARS; i++) {
       var brightness = hash(i * 57.3 + 700.0);
-      if (brightness < 0.5) continue; // Only twinkle brighter stars
+      if (brightness < 0.5) continue;
       var sx = hash(i * 127.1 + 500.0) * W;
       var sy = hash(i * 311.7 + 600.0) * H;
       var twinkle = 0.5 + 0.5 * Math.sin(time * starTwinkleSpeeds[i] + starTwinklePhases[i]);
@@ -359,23 +358,69 @@
     ctx.fill();
   }
 
-  // ── Draw trail dot for a body (small bright point, like flow-field) ──
-  function drawTrailDot(px, py, body) {
-    var dotR = 2.5 * (minDim / 800);
-    // Bright concentrated dot — accumulates into clean narrow trails
-    ctx.beginPath();
-    ctx.arc(px, py, dotR, 0, TAU);
-    ctx.fillStyle = 'rgba(' + body.r + ',' + body.g + ',' + body.b + ',0.6)';
-    ctx.fill();
-    // Slightly wider soft halo
-    var haloR = dotR * 4;
-    var grd = ctx.createRadialGradient(px, py, 0, px, py, haloR);
-    grd.addColorStop(0, 'rgba(' + body.r + ',' + body.g + ',' + body.b + ',0.15)');
-    grd.addColorStop(1, 'rgba(' + body.r + ',' + body.g + ',' + body.b + ',0)');
-    ctx.beginPath();
-    ctx.arc(px, py, haloR, 0, TAU);
-    ctx.fillStyle = grd;
-    ctx.fill();
+  // ── Draw polyline trail for a body ──
+  var NUM_BANDS = 12;
+
+  function drawTrail(body) {
+    var trail = body.trail;
+    var len = trail.length;
+    if (len < 2) return;
+
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // Draw in alpha bands for performance
+    for (var band = 0; band < NUM_BANDS; band++) {
+      var startIdx = Math.floor(len * band / NUM_BANDS);
+      var endIdx = Math.floor(len * (band + 1) / NUM_BANDS);
+      if (endIdx - startIdx < 2) continue;
+
+      var frac = (band + 0.5) / NUM_BANDS; // 0..1, oldest to newest
+      var alpha = frac * frac * 0.5;
+      var width = 0.8 + frac * 2.5;
+
+      ctx.beginPath();
+      ctx.moveTo(trail[startIdx].x, trail[startIdx].y);
+      for (var j = startIdx + 1; j < endIdx; j++) {
+        ctx.lineTo(trail[j].x, trail[j].y);
+      }
+      // Connect to next band's start for continuity
+      if (endIdx < len) {
+        ctx.lineTo(trail[endIdx].x, trail[endIdx].y);
+      }
+      ctx.strokeStyle = 'rgba(' + body.r + ',' + body.g + ',' + body.b + ',' + alpha + ')';
+      ctx.lineWidth = width;
+      ctx.stroke();
+    }
+  }
+
+  // ── Draw glowing head along recent trail positions ──
+  function drawTrailGlow(body) {
+    var trail = body.trail;
+    var len = trail.length;
+    if (len < 2) return;
+
+    // Glow along the most recent ~30 positions
+    var glowCount = Math.min(30, len);
+    var startIdx = len - glowCount;
+    var scaleFactor = minDim / 800;
+
+    for (var j = startIdx; j < len; j++) {
+      var frac = (j - startIdx) / glowCount; // 0 = oldest glow, 1 = newest
+      var glowAlpha = frac * frac * 0.25;
+      var glowR = (3 + frac * 8) * scaleFactor;
+
+      var grd = ctx.createRadialGradient(
+        trail[j].x, trail[j].y, 0,
+        trail[j].x, trail[j].y, glowR
+      );
+      grd.addColorStop(0, 'rgba(' + body.r + ',' + body.g + ',' + body.b + ',' + glowAlpha + ')');
+      grd.addColorStop(1, 'rgba(' + body.r + ',' + body.g + ',' + body.b + ',0)');
+      ctx.beginPath();
+      ctx.arc(trail[j].x, trail[j].y, glowR, 0, TAU);
+      ctx.fillStyle = grd;
+      ctx.fill();
+    }
   }
 
   // ── Normalized coords to pixel coords ──
@@ -388,25 +433,7 @@
 
   // ── State ──
   var paused = false;
-  var needsFullRedraw = true;
-  var frameCount = 0;
   var startTime = 0;
-
-  // ── Compute fade alpha from params ──
-  function getFadeAlpha() {
-    // TRAIL_LENGTH range: 50-500, default 200
-    // Lower TRAIL_LENGTH = shorter trails = higher fade alpha
-    // Higher TRAIL_LENGTH = longer trails = lower fade alpha
-    // Map 50->0.08, 200->0.03, 500->0.008
-    var t = (trailLength - 50) / 450; // 0 to 1
-    var alpha = 0.04 - t * 0.032; // 0.04 down to 0.008
-    return Math.max(0.005, Math.min(0.1, alpha));
-  }
-
-  // ── Get orbit speed multiplier from GRAVITY_STRENGTH ──
-  function getOrbitSpeed() {
-    return gravityStrength;
-  }
 
   // ── Main render ──
   function render(now) {
@@ -420,71 +447,62 @@
 
     resize();
 
-    var fadeAlpha = getFadeAlpha();
-    var orbitSpeed = getOrbitSpeed();
+    var orbitSpeed = gravityStrength;
+    var maxTrail = Math.round(trailLength);
 
-    if (needsFullRedraw) {
-      // Full clear and redraw background
-      ctx.fillStyle = '#0c0a0e';
-      ctx.fillRect(0, 0, W, H);
-
-      // Draw nebula
-      ctx.globalAlpha = 1;
-      ctx.drawImage(nebulaCanvas, 0, 0, W, H);
-
-      // Draw starfield
-      ctx.globalAlpha = 1;
-      ctx.drawImage(starCanvas, 0, 0, W, H);
-
-      // Draw vignette
-      initVignette();
-      ctx.drawImage(vignetteCanvas, 0, 0, W, H);
-
-      needsFullRedraw = false;
-      frameCount = 0;
-    }
-
-    // ── Alpha overlay for trail fade ──
-    // Composite the deep space color with low alpha to create trails
+    // ── 1. Clear canvas completely ──
     ctx.globalCompositeOperation = 'source-over';
-    ctx.fillStyle = 'rgba(12, 10, 14,' + fadeAlpha + ')';
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#0c0a0e';
     ctx.fillRect(0, 0, W, H);
 
-    // ── Redraw starfield to prevent fade-out ──
-    if (frameCount % 5 === 0) {
-      ctx.globalAlpha = fadeAlpha * 5;
-      ctx.drawImage(starCanvas, 0, 0, W, H);
-      ctx.globalAlpha = 1;
+    // ── 2. Draw pre-rendered background layers ──
+    ctx.drawImage(nebulaCanvas, 0, 0, W, H);
+    ctx.drawImage(starCanvas, 0, 0, W, H);
+
+    // Star twinkle (animated overlay on static starfield)
+    drawStarTwinkle(time);
+
+    // ── 3. Update trail positions for each body ──
+    for (var i = 0; i < NUM_BODIES; i++) {
+      var body = bodies[i];
+      var pos = bodyPosition(body, time * orbitSpeed);
+      var pixel = toPixel(pos.x, pos.y);
+
+      body.trail.push({ x: pixel.x, y: pixel.y });
+      if (body.trail.length > maxTrail) {
+        body.trail.shift();
+      }
     }
 
-    // ── Draw trail dots (accumulate into luminous arcs) ──
+    // ── 4. Draw trails (polylines with fading alpha) ──
     ctx.globalCompositeOperation = 'lighter';
 
     for (var i = 0; i < NUM_BODIES; i++) {
-      var body = bodies[i];
-      var pos = bodyPosition(body, time * orbitSpeed);
-      var pixel = toPixel(pos.x, pos.y);
-
-      // Small bright dot — creates clean narrow trails via accumulation
-      drawTrailDot(pixel.x, pixel.y, body);
+      drawTrail(bodies[i]);
     }
 
-    // ── Draw bodies on top (full glow rendering) ──
+    // ── 5. Draw trail glow (hot glowing head behind each body) ──
+    for (var i = 0; i < NUM_BODIES; i++) {
+      drawTrailGlow(bodies[i]);
+    }
+
+    // ── 6. Draw bodies on top (full glow rendering) ──
+    ctx.globalCompositeOperation = 'source-over';
     for (var i = 0; i < NUM_BODIES; i++) {
       var body = bodies[i];
-      var pos = bodyPosition(body, time * orbitSpeed);
-      var pixel = toPixel(pos.x, pos.y);
-      drawBody(pixel.x, pixel.y, body, time, i);
+      var trail = body.trail;
+      if (trail.length > 0) {
+        var head = trail[trail.length - 1];
+        drawBody(head.x, head.y, body, time, i);
+      }
     }
 
-    // ── Vignette (composite normally) ──
+    // ── 7. Vignette ──
     ctx.globalCompositeOperation = 'source-over';
-    // Subtle vignette re-application every frame to darken edges
-    ctx.globalAlpha = fadeAlpha * 2;
-    ctx.drawImage(vignetteCanvas, 0, 0, W, H);
     ctx.globalAlpha = 1;
+    ctx.drawImage(vignetteCanvas, 0, 0, W, H);
 
-    frameCount++;
     requestAnimationFrame(render);
   }
 
@@ -496,7 +514,10 @@
   document.addEventListener('visibilitychange', function () {
     paused = document.hidden;
     if (!paused) {
-      needsFullRedraw = true;
+      // Clear trails to avoid discontinuity after pause
+      for (var i = 0; i < bodies.length; i++) {
+        bodies[i].trail = [];
+      }
       startTime = 0;
     }
   });

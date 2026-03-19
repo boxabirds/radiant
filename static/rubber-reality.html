@@ -246,41 +246,29 @@
   var uSpeed = gl.getUniformLocation(prog, 'u_speed');
   var uAmplitude = gl.getUniformLocation(prog, 'u_amplitude');
 
-  // ── Mouse/touch tracking ──
+  // ── Mouse/touch tracking — active while cursor is over canvas ──
   var mouseX = 0, mouseY = 0, mouseActive = 0;
-  var mouseDecay = 0;
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
   var needsResize = true;
 
-  function onPointerMove(e) {
+  function updateMousePos(x, y) {
     var rect = canvas.getBoundingClientRect();
-    var x = e.clientX || 0;
-    var y = e.clientY || 0;
     mouseX = (x - rect.left) * dpr;
-    mouseY = (rect.height - (y - rect.top)) * dpr; // flip Y for GL
+    mouseY = (rect.height - (y - rect.top)) * dpr;
     mouseActive = 1;
-    mouseDecay = 3.0;
   }
 
-  canvas.addEventListener('mousemove', onPointerMove);
-  canvas.addEventListener('touchmove', function(e) {
-    e.preventDefault();
-    if (e.touches.length > 0) {
-      var touch = e.touches[0];
-      onPointerMove({ clientX: touch.clientX, clientY: touch.clientY });
-    }
-  }, { passive: false });
+  canvas.addEventListener('mousemove', function(e) { updateMousePos(e.clientX, e.clientY); });
+  canvas.addEventListener('mouseleave', function() { mouseActive = 0; });
   canvas.addEventListener('touchstart', function(e) {
     e.preventDefault();
-    if (e.touches.length > 0) {
-      var touch = e.touches[0];
-      onPointerMove({ clientX: touch.clientX, clientY: touch.clientY });
-    }
+    if (e.touches.length > 0) updateMousePos(e.touches[0].clientX, e.touches[0].clientY);
   }, { passive: false });
-  canvas.addEventListener('mouseleave', function() {
-    mouseDecay = 0;
-    mouseActive = 0;
-  });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    if (e.touches.length > 0) updateMousePos(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() { mouseActive = 0; });
 
   // ── Resize ──
   function resize() {
@@ -307,15 +295,6 @@
       dt = Math.min((now - lastTime) * 0.001, 0.05);
     }
     lastTime = now;
-
-    // Fade mouse influence
-    if (mouseDecay > 0) {
-      mouseDecay -= dt;
-      if (mouseDecay <= 0) {
-        mouseDecay = 0;
-        mouseActive = 0;
-      }
-    }
 
     if (needsResize) resize();
 

@@ -389,13 +389,13 @@
       canvas.width = w;
       canvas.height = h;
       gl.viewport(0, 0, w, h);
+      gl.uniform2f(uRes, canvas.width, canvas.height);
     }
   }
 
   function render(now) {
     if (needsResize) resize();
     gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
-    gl.uniform2f(uRes, canvas.width, canvas.height);
     gl.uniform1f(uAuroraSpeed, auroraSpeedVal);
     gl.uniform1f(uAuroraIntensity, auroraIntensityVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);

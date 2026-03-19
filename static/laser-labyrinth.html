@@ -341,6 +341,7 @@
       canvas.width = w;
       canvas.height = h;
       gl.viewport(0, 0, w, h);
+      gl.uniform2f(uRes, canvas.width, canvas.height);
     }
   }
 
@@ -351,7 +352,6 @@
     if (needsResize) resize();
     var t = prefersReduced ? 0.0 : now * 0.001;
     gl.uniform1f(uTime, t);
-    gl.uniform2f(uRes, canvas.width, canvas.height);
     gl.uniform1f(uSweep, SWEEP_SPEED);
     gl.uniform1f(uIntensity, BEAM_INTENSITY);
     gl.drawArrays(gl.TRIANGLES, 0, 3);

@@ -305,6 +305,7 @@
       canvas.width = w;
       canvas.height = h;
       gl.viewport(0, 0, w, h);
+      gl.uniform2f(uRes, canvas.width, canvas.height);
     }
   }
 
@@ -314,7 +315,6 @@
     if (!paused) {
     if (needsResize) resize();
       gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
-      gl.uniform2f(uRes, canvas.width, canvas.height);
       gl.uniform1f(uFlareSpread, flareSpreadVal);
       gl.uniform1f(uDriftSpeed, driftSpeedVal);
       gl.drawArrays(gl.TRIANGLES, 0, 3);

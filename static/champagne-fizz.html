@@ -57,7 +57,7 @@
   // Bubble pool
   var bubbles = [];
   var sparkles = [];
-  var MAX_BUBBLES = 600;
+  var MAX_BUBBLES = 1200;
   var MAX_SPARKLES = 200;
 
   // Nucleation sites - fixed points along the bottom where bubbles tend to form
@@ -171,15 +171,16 @@
       b.wobblePhase += b.wobbleFreq * dt;
       b.x += Math.sin(b.wobblePhase) * b.wobbleAmp * dt * 2;
 
-      // Mouse push: gently nudge nearby bubbles away from cursor
+      // Mouse push: firmly push nearby bubbles away from cursor
       if (mouseActive) {
         var mdx = b.x - mouseX;
         var mdy = b.y - mouseY;
         var md = Math.sqrt(mdx * mdx + mdy * mdy);
-        if (md > 1 && md < 120) {
-          var push = (1 - md / 120) * 2.0 * dt * 60;
+        if (md > 1 && md < 180) {
+          var push = (1 - md / 180);
+          push *= push * 8.0 * dt * 60;
           b.x += (mdx / md) * push;
-          b.y += (mdy / md) * push * 0.3;
+          b.y += (mdy / md) * push * 0.5;
         }
       }
 
@@ -381,66 +382,40 @@
     ctx.fillRect(0, 0, width, height);
   }
 
-  // Mouse state
+  // Mouse state: hold to continuously spawn bubbles, hover pushes them
   var mouseX = 0, mouseY = 0;
   var mouseActive = false;
+  var mouseDown = false;
+
+  function spawnBubbleAt(bx, by) {
+    if (bubbles.length >= MAX_BUBBLES) return;
+    var angle = Math.random() * Math.PI * 2;
+    var spread = Math.random() * 20;
+    var r = 2 + Math.random() * 8;
+    bubbles.push({
+      x: bx + Math.cos(angle) * spread,
+      y: by + Math.sin(angle) * spread,
+      radius: r, baseRadius: r,
+      wobblePhase: Math.random() * Math.PI * 2,
+      wobbleFreq: 1.5 + Math.random() * 1.5,
+      wobbleAmp: (0.3 + Math.random() * 0.7) * r,
+      speedMult: 0.9 + Math.random() * 0.8,
+      hueShift: (Math.random() - 0.5) * 20,
+      opacity: 0.4 + Math.random() * 0.4,
+      highlightAngle: -0.6 + Math.random() * 0.3,
+      age: 0,
+      pulsePhase: Math.random() * Math.PI * 2,
+      pulseRate: 2 + Math.random() * 2
+    });
+  }
 
   canvas.addEventListener('mousemove', function(e) { mouseX = e.clientX; mouseY = e.clientY; mouseActive = true; });
-  canvas.addEventListener('mouseleave', function() { mouseActive = false; });
-  canvas.addEventListener('click', function(e) {
-    // Burst of bubbles at click position
-    for (var i = 0; i < 12; i++) {
-      if (bubbles.length >= MAX_BUBBLES) break;
-      var angle = Math.random() * Math.PI * 2;
-      var spread = Math.random() * 30;
-      bubbles.push({
-        x: e.clientX + Math.cos(angle) * spread,
-        y: e.clientY + Math.sin(angle) * spread,
-        radius: 2 + Math.random() * 8,
-        baseRadius: 2 + Math.random() * 8,
-        wobblePhase: Math.random() * Math.PI * 2,
-        wobbleFreq: 1.5 + Math.random() * 1.5,
-        wobbleAmp: 0.3 + Math.random() * 0.7,
-        speedMult: 0.9 + Math.random() * 0.8,
-        hueShift: (Math.random() - 0.5) * 20,
-        opacity: 0.4 + Math.random() * 0.4,
-        highlightAngle: -0.6 + Math.random() * 0.3,
-        age: 0,
-        pulsePhase: Math.random() * Math.PI * 2,
-        pulseRate: 2 + Math.random() * 2
-      });
-    }
-  });
-  canvas.addEventListener('touchstart', function(e) {
-    e.preventDefault();
-    mouseActive = true;
-    mouseX = e.touches[0].clientX;
-    mouseY = e.touches[0].clientY;
-    // Burst on touch
-    for (var i = 0; i < 12; i++) {
-      if (bubbles.length >= MAX_BUBBLES) break;
-      var angle = Math.random() * Math.PI * 2;
-      var spread = Math.random() * 30;
-      bubbles.push({
-        x: mouseX + Math.cos(angle) * spread,
-        y: mouseY + Math.sin(angle) * spread,
-        radius: 2 + Math.random() * 8,
-        baseRadius: 2 + Math.random() * 8,
-        wobblePhase: Math.random() * Math.PI * 2,
-        wobbleFreq: 1.5 + Math.random() * 1.5,
-        wobbleAmp: 0.3 + Math.random() * 0.7,
-        speedMult: 0.9 + Math.random() * 0.8,
-        hueShift: (Math.random() - 0.5) * 20,
-        opacity: 0.4 + Math.random() * 0.4,
-        highlightAngle: -0.6 + Math.random() * 0.3,
-        age: 0,
-        pulsePhase: Math.random() * Math.PI * 2,
-        pulseRate: 2 + Math.random() * 2
-      });
-    }
-  }, { passive: false });
+  canvas.addEventListener('mouseleave', function() { mouseActive = false; mouseDown = false; });
+  canvas.addEventListener('mousedown', function(e) { mouseDown = true; mouseX = e.clientX; mouseY = e.clientY; mouseActive = true; });
+  canvas.addEventListener('mouseup', function() { mouseDown = false; });
+  canvas.addEventListener('touchstart', function(e) { e.preventDefault(); mouseDown = true; mouseActive = true; mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY; }, { passive: false });
   canvas.addEventListener('touchmove', function(e) { e.preventDefault(); mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY; }, { passive: false });
-  canvas.addEventListener('touchend', function() { mouseActive = false; });
+  canvas.addEventListener('touchend', function() { mouseDown = false; mouseActive = false; });
 
   // Animation state
   var lastTime = 0;
@@ -467,6 +442,14 @@
     while (spawnAccumulator >= 1) {
       spawnBubble();
       spawnAccumulator -= 1;
+    }
+
+    // Hold mouse to continuously spawn bubbles at cursor
+    if (mouseDown) {
+      var holdSpawn = Math.ceil(8 * dt * 60);
+      for (var si = 0; si < holdSpawn; si++) {
+        spawnBubbleAt(mouseX, mouseY);
+      }
     }
 
     // Update

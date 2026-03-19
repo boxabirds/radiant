@@ -272,16 +272,26 @@
     }
   }
 
-  // --- Sway (multi-frequency wind) ---
+  // --- Sway (multi-frequency wind + mouse wind + shake) ---
   function getSwayAngle(branch, time) {
     let total = 0;
     let b = branch;
+    let depth = 0;
     while (b) {
       const a = b.swayAmp;
       total += Math.sin(time * 0.0005 + b.swayPhase) * a;
       total += Math.sin(time * 0.0003 + b.swayPhase * 1.7) * a * 0.6;
       total += Math.sin(time * 0.00012 + b.swayPhase * 0.4) * a * 0.35;
+      depth++;
       b = b.parent;
+    }
+    // Mouse wind: deeper branches bend more
+    if (mouseActive) {
+      total += windForce * 0.04 * depth;
+    }
+    // Shake: rapid oscillation that decays
+    if (shakeAmount > 0.01) {
+      total += Math.sin(time * 0.015 + branch.swayPhase * 3) * shakeAmount * 0.06 * depth;
     }
     return total;
   }
@@ -489,6 +499,10 @@
 
   // --- State machine ---
   function frame(time) {
+    // Decay shake
+    if (shakeAmount > 0.01) shakeAmount *= 0.95;
+    else shakeAmount = 0;
+
     switch (treeState) {
       case 'growing': {
         const done = updateBranches(time);
@@ -543,14 +557,28 @@
     else startLoop();
   });
 
-  // Mouse: click to grow a new tree immediately
-  canvas.addEventListener('click', function() {
-    createTree();
+  // Mouse: move to push the tree with wind, click to shake it
+  var mouseX = W / 2, mouseY = H / 2, mouseActive = false;
+  var windForce = 0; // -1 to 1, based on mouse x relative to tree
+  var shakeAmount = 0;
+
+  canvas.addEventListener('mousemove', function(e) {
+    mouseX = e.clientX; mouseY = e.clientY; mouseActive = true;
+    windForce = (mouseX - W / 2) / (W / 2); // -1 left, +1 right
   });
+  canvas.addEventListener('mouseleave', function() { mouseActive = false; windForce = 0; });
+  canvas.addEventListener('click', function() { shakeAmount = 1.0; });
   canvas.addEventListener('touchstart', function(e) {
-    e.preventDefault();
-    createTree();
+    e.preventDefault(); mouseActive = true;
+    mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY;
+    windForce = (mouseX - W / 2) / (W / 2);
+    shakeAmount = 1.0;
   }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault(); mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY;
+    windForce = (mouseX - W / 2) / (W / 2);
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() { mouseActive = false; windForce = 0; });
 
   createTree();
   requestAnimationFrame(frame);

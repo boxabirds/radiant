@@ -165,10 +165,18 @@
         const a1 = p1.baseAngle + rotation;
         const a2 = p2.baseAngle + rotation;
 
-        const x1 = cx + Math.cos(a1) * r1;
-        const y1 = cy + Math.sin(a1) * r1;
-        const x2 = cx + Math.cos(a2) * r2;
-        const y2 = cy + Math.sin(a2) * r2;
+        const fx1 = Math.cos(a1) * r1, fy1 = Math.sin(a1) * r1;
+        const cXt = Math.cos(tiltY), cYt = Math.cos(tiltX);
+        const sYt = Math.sin(tiltY), sXt = Math.sin(-tiltX);
+        const z1 = fx1 * sYt + fy1 * sXt;
+        const p1p = 1 + z1 * 0.0008;
+        const x1 = cx + fx1 * cXt * p1p;
+        const y1 = cy + fy1 * cYt * p1p;
+        const fx2 = Math.cos(a2) * r2, fy2 = Math.sin(a2) * r2;
+        const z2 = fx2 * sYt + fy2 * sXt;
+        const p2p = 1 + z2 * 0.0008;
+        const x2 = cx + fx2 * cXt * p2p;
+        const y2 = cy + fy2 * cYt * p2p;
 
         const dx = x2 - x1;
         const dy = y2 - y1;
@@ -201,14 +209,9 @@
     // Very subtle overall rotation
     const rotation = time * 0.02;
 
-    // Blend center toward mouse when active
-    if (mouseActive) {
-      cx += (mouseX - cx) * 0.05;
-      cy += (mouseY - cy) * 0.05;
-    } else {
-      cx += (width / 2 - cx) * 0.03;
-      cy += (height / 2 - cy) * 0.03;
-    }
+    // Keep center at canvas center
+    cx = width / 2;
+    cy = height / 2;
 
     // Add new points (1-2 per frame)
     const pointsToAdd = pointIndex < 200 ? 2 : 1;
@@ -247,11 +250,19 @@
       const pulse = 1 + 0.12 * Math.sin(time * 2 + p.n * 0.1);
       const size = baseSize * pulse;
 
-      // Position with rotation
+      // Position with rotation + 3D tilt
       const r = p.baseRadius * pulse;
       const angle = p.baseAngle + rotation;
-      const x = cx + Math.cos(angle) * r;
-      const y = cy + Math.sin(angle) * r;
+      const flatX = Math.cos(angle) * r;
+      const flatY = Math.sin(angle) * r;
+      // Apply pseudo-3D tilt: compress axes based on tilt angle
+      const cosX = Math.cos(tiltY);
+      const cosY = Math.cos(tiltX);
+      // Perspective foreshortening
+      const z = flatX * Math.sin(tiltY) + flatY * Math.sin(-tiltX);
+      const perspective = 1 + z * 0.0008;
+      const x = cx + flatX * cosX * perspective;
+      const y = cy + flatY * cosY * perspective;
 
       // Skip if off screen
       if (x < -20 || x > width + 20 || y < -20 || y > height + 20) continue;
@@ -295,13 +306,32 @@
     requestAnimationFrame(draw);
   }
 
-  // Mouse: move to shift spiral center toward cursor
-  var mouseX = cx, mouseY = cy, mouseActive = false;
-  canvas.addEventListener('mousemove', function(e) { mouseX = e.clientX; mouseY = e.clientY; mouseActive = true; });
-  canvas.addEventListener('mouseleave', function() { mouseActive = false; });
-  canvas.addEventListener('touchstart', function(e) { e.preventDefault(); mouseActive = true; mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY; }, { passive: false });
-  canvas.addEventListener('touchmove', function(e) { e.preventDefault(); mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY; }, { passive: false });
-  canvas.addEventListener('touchend', function() { mouseActive = false; });
+  // Mouse: drag to tilt the spiral in pseudo-3D
+  var mouseDown = false, lastMX = 0, lastMY = 0;
+  var tiltX = 0, tiltY = 0; // tilt angles
+
+  canvas.addEventListener('mousedown', function(e) { mouseDown = true; lastMX = e.clientX; lastMY = e.clientY; });
+  canvas.addEventListener('mousemove', function(e) {
+    if (mouseDown) {
+      tiltX += (e.clientX - lastMX) * 0.003;
+      tiltY += (e.clientY - lastMY) * 0.003;
+      tiltY = Math.max(-0.8, Math.min(0.8, tiltY));
+      lastMX = e.clientX; lastMY = e.clientY;
+    }
+  });
+  canvas.addEventListener('mouseup', function() { mouseDown = false; });
+  canvas.addEventListener('dblclick', function() { tiltX = 0; tiltY = 0; });
+  canvas.addEventListener('touchstart', function(e) { e.preventDefault(); mouseDown = true; lastMX = e.touches[0].clientX; lastMY = e.touches[0].clientY; }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    if (mouseDown) {
+      tiltX += (e.touches[0].clientX - lastMX) * 0.003;
+      tiltY += (e.touches[0].clientY - lastMY) * 0.003;
+      tiltY = Math.max(-0.8, Math.min(0.8, tiltY));
+      lastMX = e.touches[0].clientX; lastMY = e.touches[0].clientY;
+    }
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() { mouseDown = false; });
 
   requestAnimationFrame(draw);
 

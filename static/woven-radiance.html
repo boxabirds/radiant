@@ -58,6 +58,18 @@
   var WEAVE_SPEED = 0.5;
   var COLOR_RICHNESS = 0.8;
 
+  // ── Click interaction: cycle color palette phase ──
+  var mouseClickOffset = 0;
+
+  canvas.addEventListener('click', function () {
+    mouseClickOffset += Math.PI * 0.4; // shift hue phase on each click
+  });
+  canvas.addEventListener('touchend', function (e) {
+    if (e.changedTouches.length === 1) {
+      mouseClickOffset += Math.PI * 0.4;
+    }
+  });
+
   // ── Smooth easing helpers ──
   // Attempt to make all transitions silky: smoothstep, hermite, etc.
 
@@ -123,12 +135,14 @@
   // Instead of abrupt color switching, we continuously blend between palette colors
   function getThreadColor(threadIndex, isVertical, time) {
     var seed = isVertical ? threadIndex * 7.3 + 13.7 : threadIndex * 11.1 + 29.3;
-    var baseIdx = Math.floor(seededRandom(seed) * basePalette.length);
+    var clickShift = Math.floor(mouseClickOffset / (Math.PI * 0.4));
+    var baseIdx = (Math.floor(seededRandom(seed) * basePalette.length) + clickShift) % basePalette.length;
     var nextIdx = (baseIdx + 1 + Math.floor(seededRandom(seed + 100) * 3)) % basePalette.length;
 
     // Very slow, smooth sinusoidal blend between two colors — no sudden shifts
     // Use a slow sine wave for continuous back-and-forth blending
-    var phase = time * 0.06 * WEAVE_SPEED + threadIndex * 0.3 + (isVertical ? 5.0 : 0.0);
+    // mouseClickOffset shifts the phase to cycle the color scheme on click
+    var phase = time * 0.06 * WEAVE_SPEED + threadIndex * 0.3 + (isVertical ? 5.0 : 0.0) + mouseClickOffset;
     var blend = 0.5 + 0.5 * Math.sin(phase); // smooth 0..1 oscillation
 
     var c1 = basePalette[baseIdx];

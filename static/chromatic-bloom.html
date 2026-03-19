@@ -51,6 +51,7 @@
     'uniform vec2 u_res;',
     'uniform float u_driftSpeed;',
     'uniform float u_grain;',
+    'uniform vec2 u_mouse;',
     '',
     '#define PI 3.14159265359',
     '#define NUM_PRIMARY 5',
@@ -95,6 +96,12 @@
     '  vec2 uv = (gl_FragCoord.xy - u_res * 0.5) / min(u_res.x, u_res.y);',
     '  float aspect = u_res.x / u_res.y;',
     '  float t = u_time * u_driftSpeed;',
+    '',
+    '  // Mouse-driven bloom center shift',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mouseNorm = (u_mouse - u_res * 0.5) / min(u_res.x, u_res.y);',
+    '    uv -= mouseNorm * 0.4;',
+    '  }',
     '',
     '  // ── Layer 1: Pure black background ──',
     '  vec3 col = vec3(0.0);',
@@ -273,9 +280,11 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uDriftSpeed = gl.getUniformLocation(prog, 'u_driftSpeed');
   var uGrain = gl.getUniformLocation(prog, 'u_grain');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
 
   var driftSpeedVal = 0.5;
   var grainVal = 0.5;
+  var mouseX = -1.0, mouseY = -1.0;
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2) * pixelScale;
   var needsResize = true;
@@ -300,6 +309,7 @@
       gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
       gl.uniform1f(uDriftSpeed, driftSpeedVal);
       gl.uniform1f(uGrain, grainVal);
+      gl.uniform2f(uMouse, mouseX, mouseY);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     }
     requestAnimationFrame(render);
@@ -315,6 +325,27 @@
 
   document.addEventListener('visibilitychange', function () {
     paused = document.hidden;
+  });
+
+  canvas.addEventListener('mousemove', function(e) {
+    mouseX = e.clientX * dpr;
+    mouseY = (canvas.clientHeight - e.clientY) * dpr;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseX = -1.0; mouseY = -1.0;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    var touch = e.touches[0];
+    mouseX = touch.clientX * dpr;
+    mouseY = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: true });
+  canvas.addEventListener('touchmove', function(e) {
+    var touch = e.touches[0];
+    mouseX = touch.clientX * dpr;
+    mouseY = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: true });
+  canvas.addEventListener('touchend', function() {
+    mouseX = -1.0; mouseY = -1.0;
   });
 
   window.addEventListener('message', function(e) {

@@ -46,6 +46,7 @@
     'uniform vec2 u_res;',
     'uniform float u_bassFreq;',
     'uniform float u_bassIntensity;',
+    'uniform vec2 u_mouse;',
     '',
     '#define PI 3.14159265359',
     '#define TAU 6.28318530718',
@@ -111,10 +112,20 @@
     '  float dist2 = length(p - offCenter);',
     '  float wave6 = sin(dist2 * 12.0 - beatFrac * 18.0) * envelope * 0.35;',
     '',
+    '  // Mouse ripple origin',
+    '  float mouseWave = 0.0;',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mouseNorm = (u_mouse / u_res - 0.5) * vec2(u_res.x / u_res.y, 1.0);',
+    '    float mouseDist = length(p - mouseNorm);',
+    '    mouseWave = sin(mouseDist * 16.0 - beatFrac * 20.0) * envelope * 0.7;',
+    '    mouseWave += sin(mouseDist * 10.0 - (beatFrac + 1.0) * 14.0) * prevEnv * 0.4;',
+    '    mouseWave *= 1.0 / (1.0 + mouseDist * 3.0);',
+    '  }',
+    '',
     '  // Low-frequency dome push — the whole mesh pushes out on beat',
     '  float dome = (1.0 - smoothstep(0.0, 1.0, dist)) * envelope * 0.8;',
     '',
-    '  float h = (wave1 + wave2 + wave3 + standing + radialMode + wave6 + dome) * intensity;',
+    '  float h = (wave1 + wave2 + wave3 + standing + radialMode + wave6 + mouseWave + dome) * intensity;',
     '',
     '  // Subtle idle vibration when between beats',
     '  float idle = sin(dist * 8.0 + t * 3.0) * 0.03 * (1.0 - envelope);',
@@ -421,6 +432,8 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uBassFreq = gl.getUniformLocation(prog, 'u_bassFreq');
   var uBassIntensity = gl.getUniformLocation(prog, 'u_bassIntensity');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
+  var mouseX = -1.0, mouseY = -1.0;
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
   var needsResize = true;
@@ -443,6 +456,7 @@
     gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
     gl.uniform1f(uBassFreq, BASS_FREQ);
     gl.uniform1f(uBassIntensity, BASS_INTENSITY);
+    gl.uniform2f(uMouse, mouseX, mouseY);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }
@@ -462,6 +476,27 @@
       running = true;
       requestAnimationFrame(render);
     }
+  });
+
+  canvas.addEventListener('mousemove', function(e) {
+    mouseX = e.clientX * dpr;
+    mouseY = (canvas.clientHeight - e.clientY) * dpr;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseX = -1.0; mouseY = -1.0;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    var touch = e.touches[0];
+    mouseX = touch.clientX * dpr;
+    mouseY = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: true });
+  canvas.addEventListener('touchmove', function(e) {
+    var touch = e.touches[0];
+    mouseX = touch.clientX * dpr;
+    mouseY = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: true });
+  canvas.addEventListener('touchend', function() {
+    mouseX = -1.0; mouseY = -1.0;
   });
 
   window.addEventListener('message', function(e) {

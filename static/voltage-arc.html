@@ -55,6 +55,7 @@
     'uniform vec2 u_res;',
     'uniform float u_arcIntensity;',
     'uniform float u_crackleSpeed;',
+    'uniform vec2 u_mouse;',
     '',
     '#define PI 3.14159265359',
     '#define NUM_CONDUCTORS 4',
@@ -224,6 +225,16 @@
     '  vec2 c2 = conductor(2, t);',
     '  vec2 c3 = conductor(3, t);',
     '',
+    '  // ── Mouse attraction: pull conductors toward cursor ──',
+    '  if (u_mouse.x >= 0.0) {',
+    '    vec2 mpos = (u_mouse - u_res * 0.5) / min(u_res.x, u_res.y);',
+    '    float pull = 0.3;',
+    '    c0 = mix(c0, mpos, pull);',
+    '    c1 = mix(c1, mpos, pull);',
+    '    c2 = mix(c2, mpos, pull);',
+    '    c3 = mix(c3, mpos, pull);',
+    '  }',
+    '',
     '  // ── Color layers ──',
     '  vec3 coreColor  = vec3(3.0, 2.8, 2.4);',
     '  vec3 innerColor = vec3(1.8, 1.2, 0.55);',
@@ -362,6 +373,44 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uArcIntensity = gl.getUniformLocation(prog, 'u_arcIntensity');
   var uCrackleSpeed = gl.getUniformLocation(prog, 'u_crackleSpeed');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
+
+  // ── Mouse tracking ──
+  var mouseX = -1, mouseY = -1;
+  var smoothMouseX = -1, smoothMouseY = -1;
+  var mouseActive = false;
+
+  function cssToGL(clientX, clientY) {
+    var scale = Math.min(window.devicePixelRatio || 1, 2) / pixelScale;
+    return {
+      x: clientX * scale,
+      y: (canvas.clientHeight - clientY) * scale
+    };
+  }
+  canvas.addEventListener('mousemove', function (e) {
+    var p = cssToGL(e.clientX, e.clientY);
+    mouseX = p.x; mouseY = p.y;
+    mouseActive = true;
+  });
+  canvas.addEventListener('mouseleave', function () {
+    mouseActive = false;
+  });
+  canvas.addEventListener('touchstart', function (e) {
+    var t = e.touches[0];
+    var p = cssToGL(t.clientX, t.clientY);
+    mouseX = p.x; mouseY = p.y;
+    mouseActive = true;
+  }, { passive: true });
+  canvas.addEventListener('touchmove', function (e) {
+    e.preventDefault();
+    var t = e.touches[0];
+    var p = cssToGL(t.clientX, t.clientY);
+    mouseX = p.x; mouseY = p.y;
+    mouseActive = true;
+  }, { passive: false });
+  canvas.addEventListener('touchend', function () {
+    mouseActive = false;
+  });
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
   var needsResize = true;
@@ -384,9 +433,21 @@
   function render(now) {
     if (!running) { requestAnimationFrame(render); return; }
     if (needsResize) resize();
+
+    // Smooth mouse toward target or back to inactive
+    if (mouseActive) {
+      if (smoothMouseX < 0) { smoothMouseX = mouseX; smoothMouseY = mouseY; }
+      smoothMouseX += (mouseX - smoothMouseX) * 0.08;
+      smoothMouseY += (mouseY - smoothMouseY) * 0.08;
+    } else {
+      smoothMouseX = -1;
+      smoothMouseY = -1;
+    }
+
     gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
     gl.uniform1f(uArcIntensity, ARC_INTENSITY);
     gl.uniform1f(uCrackleSpeed, CRACKLE_SPEED);
+    gl.uniform2f(uMouse, smoothMouseX, smoothMouseY);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }

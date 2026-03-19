@@ -651,6 +651,25 @@
     }
   }
 
+  // ── Click interaction: laser burst at cursor position ──
+  function onBurstClick(e) {
+    var rect = canvas.getBoundingClientRect();
+    var bx = e.clientX - rect.left;
+    var by = e.clientY - rect.top;
+    emitSparks(bx, by, 30 + Math.floor(Math.random() * 20));
+    emitSmoke(bx, by, 10 + Math.floor(Math.random() * 6));
+    // Burn a scorched spot at the click location
+    burnScorch(bx - 2, by - 2, bx + 2, by + 2);
+    burnScorch(bx - 2, by + 2, bx + 2, by - 2);
+  }
+  canvas.addEventListener('click', onBurstClick);
+  canvas.addEventListener('touchend', function (e) {
+    if (e.changedTouches.length === 1) {
+      var t = e.changedTouches[0];
+      onBurstClick({ clientX: t.clientX, clientY: t.clientY });
+    }
+  });
+
   // ── Main render loop ──
   var lastTime = 0;
   var animId;

@@ -397,6 +397,17 @@
         p.size = p.baseSize * (1 + p.flashBright * 1.5);
       }
 
+      // Mouse attraction
+      if (mouseActive) {
+        var mdx = mouseX - p.x, mdy = mouseY - p.y;
+        var md = Math.sqrt(mdx * mdx + mdy * mdy);
+        if (md > 5 && md < 250) {
+          var mf = (1 - md / 250) * 0.8;
+          p.vx += (mdx / md) * mf;
+          p.vy += (mdy / md) * mf;
+        }
+      }
+
       // Apply velocity
       p.x += p.vx;
       p.y += p.vy;
@@ -614,6 +625,7 @@
 
   // ── Main loop ──
   var lastTime = 0;
+  var currentTime = 0;
 
   function render(timestamp) {
     if (!lastTime) lastTime = timestamp;
@@ -621,6 +633,7 @@
     lastTime = timestamp;
 
     var time = timestamp / 1000;
+    currentTime = time;
 
     ctx.clearRect(0, 0, width, height);
     ctx.fillStyle = '#0a0a0a';
@@ -636,6 +649,26 @@
 
     requestAnimationFrame(render);
   }
+
+  // Mouse: click to trigger a solo burst, move to attract particles
+  var mouseX = cx, mouseY = cy, mouseActive = false;
+  canvas.addEventListener('mousemove', function(e) { mouseX = e.clientX; mouseY = e.clientY; mouseActive = true; });
+  canvas.addEventListener('mouseleave', function() { mouseActive = false; });
+  canvas.addEventListener('click', function(e) {
+    // Force a solo for the nearest instrument group
+    var bestGroup = 0, bestDist = 1e9;
+    for (var i = 0; i < particles.length; i++) {
+      var dx = particles[i].x - e.clientX, dy = particles[i].y - e.clientY;
+      var d = dx * dx + dy * dy;
+      if (d < bestDist) { bestDist = d; bestGroup = particles[i].group; }
+    }
+    soloGroup = bestGroup;
+    soloStart = currentTime;
+    soloDuration = beatDuration() * 4;
+  });
+  canvas.addEventListener('touchstart', function(e) { e.preventDefault(); mouseActive = true; mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY; }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) { e.preventDefault(); mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY; }, { passive: false });
+  canvas.addEventListener('touchend', function() { mouseActive = false; });
 
   requestAnimationFrame(render);
 

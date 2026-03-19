@@ -609,6 +609,21 @@
 
   requestAnimationFrame(render);
 
+  // Mouse: click to trigger wavefront from cursor position
+  canvas.addEventListener('click', function(e) {
+    wavePos = e.clientX / width;
+    waveDir = Math.random() < 0.5 ? 1 : -1;
+    wavePhase = 1 - wavePhase; // toggle order/chaos
+    waveCycleTime = 0;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    wavePos = e.touches[0].clientX / width;
+    waveDir = Math.random() < 0.5 ? 1 : -1;
+    wavePhase = 1 - wavePhase;
+    waveCycleTime = 0;
+  }, { passive: false });
+
   // ── Visibility pause ──
   document.addEventListener('visibilitychange', function() {
     paused = document.hidden;

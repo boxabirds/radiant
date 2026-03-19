@@ -51,6 +51,7 @@
     'uniform vec2 u_res;',
     'uniform float u_spread;',
     'uniform float u_detail;',
+    'uniform vec2 u_mouse;',
     '',
     '//--------------------------------------------------------------',
     '// Simplex 2D noise (Ashima Arts)',
@@ -132,14 +133,20 @@
     '  float field = inkField(uv * 0.8, t, dm);',
     '',
     '  // ── Ink source envelope: slow drifting origins ──',
+    '  // Shift center toward mouse when active (u_mouse != -1)',
+    '  vec2 center = vec2(0.0);',
+    '  if (u_mouse.x >= 0.0) {',
+    '    center = (u_mouse - u_res * 0.5) / min(u_res.x, u_res.y);',
+    '  }',
+    '  vec2 uvShifted = uv - center * 0.6;',
     '  float envelope = 0.0;',
     '  float a1 = t * 0.05;',
-    '  envelope += smoothstep(0.95, 0.0, length(uv - vec2(cos(a1)*0.15, sin(a1*0.7)*0.12)));',
+    '  envelope += smoothstep(0.95, 0.0, length(uvShifted - vec2(cos(a1)*0.15, sin(a1*0.7)*0.12)));',
     '  float a2 = t * 0.04 + 2.2;',
-    '  envelope += smoothstep(0.85, 0.0, length(uv - vec2(cos(a2)*0.25, sin(a2*0.6)*0.2)));',
+    '  envelope += smoothstep(0.85, 0.0, length(uvShifted - vec2(cos(a2)*0.25, sin(a2*0.6)*0.2)));',
     '  float a3 = t * 0.048 + 4.7;',
-    '  envelope += smoothstep(0.75, 0.0, length(uv - vec2(cos(a3*0.8)*0.2, sin(a3)*0.16)));',
-    '  envelope += smoothstep(0.65, 0.0, length(uv)) * 0.6;',
+    '  envelope += smoothstep(0.75, 0.0, length(uvShifted - vec2(cos(a3*0.8)*0.2, sin(a3)*0.16)));',
+    '  envelope += smoothstep(0.65, 0.0, length(uvShifted)) * 0.6;',
     '  envelope = clamp(envelope, 0.0, 1.0);',
     '',
     '  // ── Shape into ink: wider smoothstep for soft organic edges ──',
@@ -252,6 +259,37 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uSpread = gl.getUniformLocation(prog, 'u_spread');
   var uDetail = gl.getUniformLocation(prog, 'u_detail');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
+
+  // ── Mouse tracking ──
+  var mouseX = -1, mouseY = -1;
+  var smoothMouseX = -1, smoothMouseY = -1;
+  var mouseActive = false;
+
+  canvas.addEventListener('mousemove', function (e) {
+    mouseX = e.clientX * (Math.min(window.devicePixelRatio || 1, 2));
+    mouseY = (canvas.clientHeight - e.clientY) * (Math.min(window.devicePixelRatio || 1, 2));
+    mouseActive = true;
+  });
+  canvas.addEventListener('mouseleave', function () {
+    mouseActive = false;
+  });
+  canvas.addEventListener('touchstart', function (e) {
+    var t = e.touches[0];
+    mouseX = t.clientX * (Math.min(window.devicePixelRatio || 1, 2));
+    mouseY = (canvas.clientHeight - t.clientY) * (Math.min(window.devicePixelRatio || 1, 2));
+    mouseActive = true;
+  }, { passive: true });
+  canvas.addEventListener('touchmove', function (e) {
+    e.preventDefault();
+    var t = e.touches[0];
+    mouseX = t.clientX * (Math.min(window.devicePixelRatio || 1, 2));
+    mouseY = (canvas.clientHeight - t.clientY) * (Math.min(window.devicePixelRatio || 1, 2));
+    mouseActive = true;
+  }, { passive: false });
+  canvas.addEventListener('touchend', function () {
+    mouseActive = false;
+  });
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
   var needsResize = true;
@@ -283,9 +321,20 @@
     lastTime = now;
     if (needsResize) resize();
 
+    // Smooth mouse toward target or back to inactive (-1,-1)
+    if (mouseActive) {
+      if (smoothMouseX < 0) { smoothMouseX = mouseX; smoothMouseY = mouseY; }
+      smoothMouseX += (mouseX - smoothMouseX) * 0.08;
+      smoothMouseY += (mouseY - smoothMouseY) * 0.08;
+    } else {
+      smoothMouseX = -1;
+      smoothMouseY = -1;
+    }
+
     gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
     gl.uniform1f(uSpread, SPREAD_SPEED);
     gl.uniform1f(uDetail, TENDRIL_DETAIL);
+    gl.uniform2f(uMouse, smoothMouseX, smoothMouseY);
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);

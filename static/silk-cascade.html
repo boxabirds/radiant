@@ -40,6 +40,7 @@
     'uniform vec2 u_res;',
     'uniform float u_flowSpeed;',
     'uniform float u_sheenIntensity;',
+    'uniform vec2 u_mouse;',
     '',
     '#define PI 3.14159265359',
     '',
@@ -174,6 +175,14 @@
     '  vec2 uv=gl_FragCoord.xy/u_res;',
     '  float aspect=u_res.x/u_res.y;',
     '  vec2 p=(uv-0.5)*vec2(aspect, 1.0);',
+    '',
+    '  // ── Mouse-driven cascade origin shift ──',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mUV = u_mouse / u_res;',
+    '    vec2 mP = (mUV - 0.5) * vec2(aspect, 1.0);',
+    '    p -= mP * 0.5;',
+    '  }',
+    '',
     '  float t=u_time*u_flowSpeed;',
     '',
     '  // Slowly drifting lights',
@@ -302,10 +311,19 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uFlowSpeed = gl.getUniformLocation(prog, 'u_flowSpeed');
   var uSheenIntensity = gl.getUniformLocation(prog, 'u_sheenIntensity');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
   var flowSpeedVal = 0.4;
   var sheenIntensityVal = 1.0;
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var mouseX = -1.0, mouseY = -1.0;
+  canvas.addEventListener('mousemove', function (e) {
+    mouseX = e.clientX * dpr;
+    mouseY = (canvas.clientHeight - e.clientY) * dpr;
+  });
+  canvas.addEventListener('mouseleave', function () {
+    mouseX = -1.0; mouseY = -1.0;
+  });
   var needsResize = true;
   var running = true;
 
@@ -327,6 +345,7 @@
     gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
     gl.uniform1f(uFlowSpeed, flowSpeedVal);
     gl.uniform1f(uSheenIntensity, sheenIntensityVal);
+    gl.uniform2f(uMouse, mouseX, mouseY);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }

@@ -48,6 +48,7 @@
     'uniform vec2 u_res;',
     'uniform float u_rippleSpeed;',
     'uniform float u_moonGlow;',
+    'uniform vec2 u_mouse;',
     '',
     '#define PI 3.14159265359',
     '#define NUM_SOURCES 4',
@@ -87,6 +88,14 @@
     '  }',
     '  h /= float(NUM_SOURCES) * 0.6;',
     '',
+    '  // ── Mouse ripple disturbance ──',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mp = (u_mouse / u_res - 0.5) * vec2(aspect, 1.0);',
+    '    float md = length(p - mp);',
+    '    float mwave = sin(md * 60.0 - t * 8.0) * exp(-md * 6.0) * 0.8;',
+    '    h += mwave;',
+    '  }',
+    '',
     '  // ── Compute surface normal from height field for lighting ──',
     '  // Approximate derivatives',
     '  float eps = 0.002;',
@@ -105,6 +114,16 @@
     '  }',
     '  hR /= float(NUM_SOURCES) * 0.6;',
     '  hU /= float(NUM_SOURCES) * 0.6;',
+    '',
+    '  // Mouse ripple contribution to normal',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mp = (u_mouse / u_res - 0.5) * vec2(aspect, 1.0);',
+    '    float mdR = length(p + vec2(eps, 0.0) - mp);',
+    '    float mdU = length(p + vec2(0.0, eps) - mp);',
+    '    hR += sin(mdR * 60.0 - t * 8.0) * exp(-mdR * 6.0) * 0.8;',
+    '    hU += sin(mdU * 60.0 - t * 8.0) * exp(-mdU * 6.0) * 0.8;',
+    '  }',
+    '',
     '  vec2 grad = vec2(hR - h, hU - h) / eps;',
     '  vec3 N = normalize(vec3(-grad * 0.15, 1.0));',
     '',
@@ -189,8 +208,10 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uRippleSpeed = gl.getUniformLocation(prog, 'u_rippleSpeed');
   var uMoonGlow = gl.getUniformLocation(prog, 'u_moonGlow');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
   var rippleSpeedVal = 0.5;
   var moonGlowVal = 1.0;
+  var mouseX = -1.0, mouseY = -1.0;
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
   var needsResize = true;
@@ -214,6 +235,7 @@
     gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
     gl.uniform1f(uRippleSpeed, rippleSpeedVal);
     gl.uniform1f(uMoonGlow, moonGlowVal);
+    gl.uniform2f(uMouse, mouseX, mouseY);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }
@@ -228,6 +250,27 @@
 
   document.addEventListener('visibilitychange', function () {
     running = !document.hidden;
+  });
+
+  canvas.addEventListener('mousemove', function(e) {
+    mouseX = e.clientX * dpr;
+    mouseY = (canvas.clientHeight - e.clientY) * dpr;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseX = -1.0; mouseY = -1.0;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    var touch = e.touches[0];
+    mouseX = touch.clientX * dpr;
+    mouseY = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: true });
+  canvas.addEventListener('touchmove', function(e) {
+    var touch = e.touches[0];
+    mouseX = touch.clientX * dpr;
+    mouseY = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: true });
+  canvas.addEventListener('touchend', function() {
+    mouseX = -1.0; mouseY = -1.0;
   });
 
   window.addEventListener('message', function(e) {

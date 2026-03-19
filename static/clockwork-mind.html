@@ -401,7 +401,7 @@
     var rootR = pr - dedendum;      // inner radius (tooth root)
 
     // Current rotation angle
-    var rot = g.direction * g.speed * time * ROTATION_SPEED + g.phase;
+    var rot = g.direction * g.speed * time * ROTATION_SPEED + g.phase + g.direction * g.speed * mouseRotOffset;
 
     ctx.save();
     ctx.translate(g.x, g.y);
@@ -793,6 +793,26 @@
 
     requestAnimationFrame(render);
   }
+
+  // Mouse: drag to manually rotate the gear system
+  var mouseDown = false, lastMX = 0, mouseRotOffset = 0;
+  canvas.addEventListener('mousedown', function(e) { mouseDown = true; lastMX = e.clientX; });
+  canvas.addEventListener('mousemove', function(e) {
+    if (mouseDown) {
+      mouseRotOffset += (e.clientX - lastMX) * 0.005;
+      lastMX = e.clientX;
+    }
+  });
+  canvas.addEventListener('mouseup', function() { mouseDown = false; });
+  canvas.addEventListener('touchstart', function(e) { e.preventDefault(); mouseDown = true; lastMX = e.touches[0].clientX; }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    if (mouseDown) {
+      mouseRotOffset += (e.touches[0].clientX - lastMX) * 0.005;
+      lastMX = e.touches[0].clientX;
+    }
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() { mouseDown = false; });
 
   requestAnimationFrame(render);
 

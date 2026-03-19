@@ -463,6 +463,23 @@
 
   requestAnimationFrame(render);
 
+  // Mouse: click to trigger a glitch burst
+  canvas.addEventListener('click', function() {
+    aberrationActive = true;
+    lastAberrationTime = startTime ? (performance.now() - startTime) / 1000 : 0;
+    aberrationDuration = 0.3 + Math.random() * 0.5;
+    GLITCH_INTENSITY = Math.min(2.0, GLITCH_INTENSITY + 0.5);
+    setTimeout(function() { GLITCH_INTENSITY = Math.max(0.5, GLITCH_INTENSITY - 0.5); }, 500);
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    aberrationActive = true;
+    lastAberrationTime = startTime ? (performance.now() - startTime) / 1000 : 0;
+    aberrationDuration = 0.3 + Math.random() * 0.5;
+    GLITCH_INTENSITY = Math.min(2.0, GLITCH_INTENSITY + 0.5);
+    setTimeout(function() { GLITCH_INTENSITY = Math.max(0.5, GLITCH_INTENSITY - 0.5); }, 500);
+  }, { passive: false });
+
   // ── Visibility handling ──
   document.addEventListener('visibilitychange', function() {
     if (document.hidden) {

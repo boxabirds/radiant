@@ -42,6 +42,7 @@
     'uniform vec2 u_res;',
     'uniform float u_modeSpeed;',
     'uniform float u_complexity;',
+    'uniform vec2 u_mouse;',
     '',
     'float hash(vec2 p){',
     '  vec3 p3=fract(vec3(p.xyx)*vec3(.1031,.1030,.0973));',
@@ -70,6 +71,12 @@
     '  float t=u_time*u_modeSpeed;',
     '',
     '  vec2 p=uv*2.0;',
+    '',
+    '  // Mouse-driven node shift',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mouseNorm = (u_mouse - u_res * 0.5) / min(u_res.x, u_res.y);',
+    '    p += mouseNorm * 1.5;',
+    '  }',
     '',
     '  // Circular plate',
     '  float plateDist=length(uv);',
@@ -173,8 +180,10 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uModeSpeed = gl.getUniformLocation(prog, 'u_modeSpeed');
   var uComplexity = gl.getUniformLocation(prog, 'u_complexity');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
   var modeSpeedVal = 0.5;
   var complexityVal = 5.0;
+  var mouseX = -1.0, mouseY = -1.0;
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
   var needsResize = true;
@@ -198,6 +207,7 @@
     gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
     gl.uniform1f(uModeSpeed, modeSpeedVal);
     gl.uniform1f(uComplexity, complexityVal);
+    gl.uniform2f(uMouse, mouseX, mouseY);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }
@@ -217,6 +227,27 @@
       running = true;
       requestAnimationFrame(render);
     }
+  });
+
+  canvas.addEventListener('mousemove', function(e) {
+    mouseX = e.clientX * dpr;
+    mouseY = (canvas.clientHeight - e.clientY) * dpr;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseX = -1.0; mouseY = -1.0;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    var touch = e.touches[0];
+    mouseX = touch.clientX * dpr;
+    mouseY = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: true });
+  canvas.addEventListener('touchmove', function(e) {
+    var touch = e.touches[0];
+    mouseX = touch.clientX * dpr;
+    mouseY = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: true });
+  canvas.addEventListener('touchend', function() {
+    mouseX = -1.0; mouseY = -1.0;
   });
 
   window.addEventListener('message', function(e) {

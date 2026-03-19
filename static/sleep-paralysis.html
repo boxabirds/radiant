@@ -241,7 +241,7 @@
     '  // These are bright spots that appear when noise layers anti-align',
     '  float clearance = (1.0 - smoothstep(0.20, 0.55, L1))',
     '                   * (1.0 - smoothstep(0.20, 0.55, L2))',
-    '                   * (1.0 - smoothstep(0.25, 0.55, L3));',
+    '                   * (1.0 - smoothstep(0.25, 0.55, L2));',
     '',
     '  // Additional pulsing for the light leaks',
     '  float leakPulse = sin(t * 0.12 + L0 * 5.0) * 0.5 + 0.5;',

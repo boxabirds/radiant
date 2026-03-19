@@ -346,7 +346,8 @@
   var flowSpeedVal = 0.4;
   var sheenIntensityVal = 1.0;
 
-  var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  // Render at 1x CSS pixels — soft folds look identical upscaled
+  var dpr = 1.0;
   var mouseX = -1.0, mouseY = -1.0;
   canvas.addEventListener('mousemove', function (e) {
     mouseX = e.clientX * dpr;

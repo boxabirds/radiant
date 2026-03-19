@@ -44,9 +44,11 @@
   var TRAIL_MAX = 600;
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var needsResize = true;
   var W = 0, H = 0;
 
   function resize() {
+    needsResize = false;
     var nw = Math.round(canvas.clientWidth * dpr);
     var nh = Math.round(canvas.clientHeight * dpr);
     if (nw !== W || nh !== H) {
@@ -338,7 +340,7 @@
 
   // ── Main loop ──
   function frame(ts) {
-    if (!running) { requestAnimationFrame(frame); return; }
+    if (!running) return;
 
     if (prevTs === 0) prevTs = ts;
     var dt = Math.min((ts - prevTs) / 1000, 0.05);
@@ -347,7 +349,7 @@
 
     time += dt * DRAW_SPEED;
 
-    resize();
+    if (needsResize) resize();
 
     // Rebuild threads array if count changed
     if (threads.length !== Math.max(2, Math.min(8, Math.round(THREAD_COUNT)))) {
@@ -372,12 +374,19 @@
     requestAnimationFrame(frame);
   }
 
+  window.addEventListener('resize', function () {
+    needsResize = true;
+  });
+
   requestAnimationFrame(frame);
 
   // ── Pause when hidden ──
   document.addEventListener('visibilitychange', function () {
     running = !document.hidden;
-    if (running) prevTs = 0;
+    if (running) {
+      prevTs = 0;
+      requestAnimationFrame(frame);
+    }
   });
 
   // ── PostMessage API ──

@@ -331,8 +331,10 @@
   var uIntensity = gl.getUniformLocation(prog, 'u_intensity');
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var needsResize = true;
 
   function resize() {
+    needsResize = false;
     var w = Math.round(canvas.clientWidth * dpr);
     var h = Math.round(canvas.clientHeight * dpr);
     if (canvas.width !== w || canvas.height !== h) {
@@ -346,7 +348,7 @@
 
   function render(now) {
     if (!running) return;
-    resize();
+    if (needsResize) resize();
     var t = prefersReduced ? 0.0 : now * 0.001;
     gl.uniform1f(uTime, t);
     gl.uniform2f(uRes, canvas.width, canvas.height);
@@ -355,6 +357,12 @@
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }
+
+  window.addEventListener('resize', function () {
+    needsResize = true;
+  });
+
+  resize();
 
   requestAnimationFrame(render);
 

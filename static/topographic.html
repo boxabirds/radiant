@@ -111,6 +111,9 @@ const SimplexNoise = (function() {
   const dpr = window.devicePixelRatio || 1;
 
   let W, H;
+  let field = new Float32Array(0);
+  let fieldCols = 0;
+  let fieldRows = 0;
 
   function resize() {
     W = window.innerWidth;
@@ -124,6 +127,14 @@ const SimplexNoise = (function() {
 
   window.addEventListener('resize', resize);
   resize();
+
+  function ensureField(cols, rows) {
+    if (cols !== fieldCols || rows !== fieldRows) {
+      fieldCols = cols;
+      fieldRows = rows;
+      field = new Float32Array(cols * rows);
+    }
+  }
 
   // ── Noise sampling with octaves ──
   function fbm(x, y, z) {
@@ -236,9 +247,9 @@ const SimplexNoise = (function() {
 
     const cols = Math.ceil(W / CELL_SIZE) + 1;
     const rows = Math.ceil(H / CELL_SIZE) + 1;
+    ensureField(cols, rows);
 
     // Sample the noise field into a grid
-    const field = new Float32Array(cols * rows);
     for (let j = 0; j < rows; j++) {
       for (let i = 0; i < cols; i++) {
         const x = i * CELL_SIZE;

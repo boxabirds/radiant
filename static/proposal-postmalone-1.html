@@ -432,8 +432,10 @@
   var urlParams = new URLSearchParams(window.location.search);
   var pixelScale = parseFloat(urlParams.get('p')) || 1;
   var dpr = 1.0 / pixelScale;
+  var needsResize = true;
 
   function resize() {
+    needsResize = false;
     var scale = 1.0 / pixelScale;
     var w = Math.round(canvas.clientWidth * dpr * scale);
     var h = Math.round(canvas.clientHeight * dpr * scale);
@@ -448,7 +450,7 @@
 
   function render(now) {
     if (!running) { requestAnimationFrame(render); return; }
-    resize();
+    if (needsResize) resize();
     gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
     gl.uniform2f(uRes, canvas.width, canvas.height);
     gl.uniform1f(uHeat, HEAT_INTENSITY);
@@ -458,6 +460,12 @@
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }
+
+  window.addEventListener('resize', function () {
+    needsResize = true;
+  });
+
+  resize();
 
   requestAnimationFrame(render);
 

@@ -50,8 +50,10 @@
   var HERO_SCALE = 0;
 
   var width, height, cx, cy, dpr;
+  var needsResize = true;
 
   function resize() {
+    needsResize = false;
     dpr = Math.min(window.devicePixelRatio || 1, 2) * pixelScale;
     width = window.innerWidth;
     height = window.innerHeight;
@@ -61,7 +63,9 @@
     cx = HERO_SCALE > 0 ? width * HERO_CENTER_X : width / 2;
     cy = HERO_SCALE > 0 ? height * HERO_CENTER_Y : height / 2;
   }
-  window.addEventListener('resize', resize);
+  window.addEventListener('resize', function () {
+    needsResize = true;
+  });
   resize();
 
   // ── 4D Tesseract geometry ──
@@ -247,7 +251,7 @@
     var elapsed = (timestamp - startTime) / 1000;
     var time = prefersReduced ? 0 : elapsed;
 
-    resize();
+    if (needsResize) resize();
 
     var scale = Math.min(width, height) * 0.28;
     if (HERO_SCALE > 0) scale *= HERO_SCALE;

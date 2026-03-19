@@ -327,37 +327,43 @@
   var mouseActive = false;
   var smoothCX = 0, smoothCY = 0;
 
+  var mouseDown = false;
   function onMouseMove(e) {
-    mouseX = e.clientX * dpr;
-    mouseY = e.clientY * dpr;
-    mouseActive = true;
+    if (mouseDown) {
+      mouseWarp = (e.clientX / canvas.clientWidth - 0.5) * 4;
+    }
+  }
+  function onMouseDown(e) {
+    mouseDown = true;
     mouseWarp = (e.clientX / canvas.clientWidth - 0.5) * 4;
   }
-  function onMouseLeave() {
-    mouseActive = false;
+  function onMouseUp() {
+    mouseDown = false;
     mouseWarp = 0;
   }
-  function onTouchMove(e) {
-    e.preventDefault();
-    var t = e.touches[0];
-    mouseX = t.clientX * dpr;
-    mouseY = t.clientY * dpr;
-    mouseActive = true;
-    mouseWarp = (t.clientX / canvas.clientWidth - 0.5) * 4;
+  function onMouseLeave() {
+    mouseDown = false;
+    mouseWarp = 0;
   }
   function onTouchStart(e) {
     var t = e.touches[0];
-    mouseX = t.clientX * dpr;
-    mouseY = t.clientY * dpr;
-    mouseActive = true;
+    mouseDown = true;
     mouseWarp = (t.clientX / canvas.clientWidth - 0.5) * 4;
   }
+  function onTouchMove(e) {
+    e.preventDefault();
+    if (mouseDown) {
+      mouseWarp = (e.touches[0].clientX / canvas.clientWidth - 0.5) * 4;
+    }
+  }
   function onTouchEnd() {
-    mouseActive = false;
+    mouseDown = false;
     mouseWarp = 0;
   }
 
+  canvas.addEventListener('mousedown', onMouseDown);
   canvas.addEventListener('mousemove', onMouseMove);
+  canvas.addEventListener('mouseup', onMouseUp);
   canvas.addEventListener('mouseleave', onMouseLeave);
   canvas.addEventListener('touchstart', onTouchStart, { passive: false });
   canvas.addEventListener('touchmove', onTouchMove, { passive: false });

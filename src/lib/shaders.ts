@@ -237,19 +237,6 @@ export const shaders: Shader[] = [
 		]
 	},
 	{
-		id: 'sleep-paralysis',
-		file: 'sleep-paralysis.html',
-		title: 'Sleep Paralysis',
-		desc: 'Shadow figures materializing and dissolving in layered fog with domain-warped noise.',
-		inspiration: 'Billie Eilish',
-		tags: ['fill', 'noise'],
-		technique: 'webgl',
-		params: [
-			{ name: 'DRIFT_SPEED', label: 'Drift Speed', min: 0.05, max: 1.0, step: 0.05, default: 0.3 },
-			{ name: 'SHADOW_DENSITY', label: 'Shadow Density', min: 0.2, max: 1.0, step: 0.05, default: 0.7 }
-		]
-	},
-	{
 		id: 'ink-dissolve',
 		file: 'ink-dissolve.html',
 		title: 'Ink Dissolve',

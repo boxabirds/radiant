@@ -503,6 +503,42 @@
     ctx.restore();
   }
 
+  // Mouse: click to spawn columns and water disturbance
+  canvas.addEventListener('click', function(e) {
+    // Disturb the water surface at click point
+    disturbWave(e.clientX, -4 - Math.random() * 3);
+    spawnRipple(e.clientX, waterSurface);
+    // Spawn a few fresh columns near click
+    var colIdx = Math.floor(e.clientX / FONT_SIZE);
+    for (var di = -1; di <= 1; di++) {
+      var ci = colIdx + di;
+      if (ci >= 0 && ci < columns.length) {
+        columns[ci].active = true;
+        columns[ci].y = e.clientY;
+        columns[ci].speed = 2.5 + Math.random() * 2;
+        columns[ci].opacity = 0.8 + Math.random() * 0.2;
+        columns[ci].hitWater = false;
+      }
+    }
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var t = e.touches[0];
+    disturbWave(t.clientX, -4 - Math.random() * 3);
+    spawnRipple(t.clientX, waterSurface);
+    var colIdx = Math.floor(t.clientX / FONT_SIZE);
+    for (var di = -1; di <= 1; di++) {
+      var ci = colIdx + di;
+      if (ci >= 0 && ci < columns.length) {
+        columns[ci].active = true;
+        columns[ci].y = t.clientY;
+        columns[ci].speed = 2.5 + Math.random() * 2;
+        columns[ci].opacity = 0.8 + Math.random() * 0.2;
+        columns[ci].hitWater = false;
+      }
+    }
+  }, { passive: false });
+
   // Animation state
   var lastTime = 0;
 

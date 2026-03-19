@@ -55,6 +55,7 @@
     'uniform vec2 u_res;',
     'uniform float u_coronaSize;',
     'uniform float u_rayIntensity;',
+    'uniform vec2 u_mouse;',
     '',
     '#define PI 3.14159265359',
     '#define TAU 6.28318530718',
@@ -103,7 +104,9 @@
     '}',
     '',
     'void main() {',
-    '  vec2 uv = (gl_FragCoord.xy - u_res * 0.5) / min(u_res.x, u_res.y);',
+    '  vec2 eclipseCenter = u_res * 0.5;',
+    '  if (u_mouse.x > 0.0) eclipseCenter = u_mouse;',
+    '  vec2 uv = (gl_FragCoord.xy - eclipseCenter) / min(u_res.x, u_res.y);',
     '  float t = u_time;',
     '  float coronaSize = u_coronaSize;',
     '  float rayIntensity = u_rayIntensity;',
@@ -291,6 +294,16 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uCoronaSize = gl.getUniformLocation(prog, 'u_coronaSize');
   var uRayIntensity = gl.getUniformLocation(prog, 'u_rayIntensity');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
+  var mouseXVal = -1.0, mouseYVal = -1.0;
+
+  // Mouse: move the eclipse position
+  var eclipseDpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.addEventListener('mousemove', function(e) { mouseXVal = e.clientX * eclipseDpr / pixelScale; mouseYVal = (canvas.clientHeight / (eclipseDpr / pixelScale) - e.clientY) * eclipseDpr / pixelScale; });
+  canvas.addEventListener('mouseleave', function() { mouseXVal = -1; mouseYVal = -1; });
+  canvas.addEventListener('touchstart', function(e) { e.preventDefault(); mouseXVal = e.touches[0].clientX * eclipseDpr / pixelScale; mouseYVal = (canvas.clientHeight / (eclipseDpr / pixelScale) - e.touches[0].clientY) * eclipseDpr / pixelScale; }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) { e.preventDefault(); mouseXVal = e.touches[0].clientX * eclipseDpr / pixelScale; mouseYVal = (canvas.clientHeight / (eclipseDpr / pixelScale) - e.touches[0].clientY) * eclipseDpr / pixelScale; }, { passive: false });
+  canvas.addEventListener('touchend', function() { mouseXVal = -1; mouseYVal = -1; });
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
   var needsResize = true;
@@ -316,6 +329,7 @@
     gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
     gl.uniform1f(uCoronaSize, CORONA_SIZE);
     gl.uniform1f(uRayIntensity, RAY_INTENSITY);
+    gl.uniform2f(uMouse, mouseXVal, mouseYVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }

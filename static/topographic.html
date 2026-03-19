@@ -231,6 +231,19 @@ const SimplexNoise = (function() {
   // We'll collect candidate positions during contour extraction and draw labels
   let labelCandidates = [];
 
+  // ── Mouse state ──
+  let mouseX = 0, mouseY = 0;
+  let mouseActive = false;
+  let mouseDown = false;
+
+  canvas.addEventListener('mousemove', function(e) { mouseX = e.clientX; mouseY = e.clientY; mouseActive = true; });
+  canvas.addEventListener('mouseleave', function() { mouseActive = false; });
+  canvas.addEventListener('mousedown', function(e) { mouseDown = true; mouseX = e.clientX; mouseY = e.clientY; mouseActive = true; });
+  canvas.addEventListener('mouseup', function() { mouseDown = false; });
+  canvas.addEventListener('touchstart', function(e) { e.preventDefault(); mouseDown = true; mouseActive = true; mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY; }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) { e.preventDefault(); mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY; }, { passive: false });
+  canvas.addEventListener('touchend', function() { mouseDown = false; mouseActive = false; });
+
   // ── Animation ──
   let time = 0;
   let lastTime = 0;
@@ -254,7 +267,19 @@ const SimplexNoise = (function() {
       for (let i = 0; i < cols; i++) {
         const x = i * CELL_SIZE;
         const y = j * CELL_SIZE;
-        field[j * cols + i] = fbm(x * NOISE_SCALE, y * NOISE_SCALE, time);
+        let val = fbm(x * NOISE_SCALE, y * NOISE_SCALE, time);
+        // Mouse adds an elevation peak (or valley when clicking)
+        if (mouseActive) {
+          const mdx = x - mouseX;
+          const mdy = y - mouseY;
+          const md = Math.sqrt(mdx * mdx + mdy * mdy);
+          const radius = Math.min(W, H) * 0.2;
+          if (md < radius) {
+            const falloff = 1 - md / radius;
+            val += (mouseDown ? -0.5 : 0.5) * falloff * falloff;
+          }
+        }
+        field[j * cols + i] = val;
       }
     }
 

@@ -11,8 +11,10 @@
 		filter: string;
 	} = $props();
 
-	/** Hides the .label overlay and injects FPS counter inside the shader iframe. */
+	/** Hides the .label overlay, injects FPS counter, and detects interaction hints. */
 	function hideLabel(node: HTMLIFrameElement) {
+		let hintEl: HTMLElement | null = null;
+
 		function onLoad() {
 			try {
 				const doc = node.contentDocument;
@@ -30,6 +32,40 @@
 					script.textContent = `(function(){var f=0,lt=performance.now(),el=document.getElementById('fps-counter');function t(){f++;var n=performance.now();if(n-lt>=1000){el.textContent=f+" fps";f=0;lt=n;}requestAnimationFrame(t);}requestAnimationFrame(t);})();`;
 					doc.body.appendChild(script);
 				}
+
+				// Detect mouse/touch interaction from script content
+				const scripts = doc.querySelectorAll('script');
+				let src = '';
+				scripts.forEach(s => { src += s.textContent || ''; });
+
+				const hasMouseDown = /addEventListener\s*\(\s*['"]mouse(down|up)['"]/.test(src);
+				const hasClick = /addEventListener\s*\(\s*['"]click['"]/.test(src);
+				const hasMouseMove = /addEventListener\s*\(\s*['"]mousemove['"]/.test(src);
+				const hasTouch = /addEventListener\s*\(\s*['"]touch(start|move)['"]/.test(src);
+
+				let hint = '';
+				if (hasMouseDown && hasMouseMove) {
+					hint = 'Drag to interact';
+				} else if (hasClick && hasMouseMove) {
+					hint = 'Move & click to interact';
+				} else if (hasClick) {
+					hint = 'Click to interact';
+				} else if (hasMouseMove) {
+					hint = 'Move cursor to interact';
+				}
+
+				// Remove any previous hint
+				if (hintEl) { hintEl.remove(); hintEl = null; }
+
+				if (hint) {
+					const container = node.closest('.mock-layout');
+					if (container) {
+						hintEl = document.createElement('div');
+						hintEl.className = 'interaction-hint';
+						hintEl.textContent = hint;
+						container.appendChild(hintEl);
+					}
+				}
 			} catch {
 				/* cross-origin or security restriction — ignore */
 			}
@@ -38,6 +74,7 @@
 		return {
 			destroy() {
 				node.removeEventListener('load', onLoad);
+				if (hintEl) hintEl.remove();
 			}
 		};
 	}
@@ -310,6 +347,28 @@
 		border-radius: 4px;
 		letter-spacing: 0.03em;
 		width: fit-content;
+	}
+
+	/* Interaction hint label */
+	.preview :global(.interaction-hint) {
+		position: absolute;
+		bottom: 12px;
+		right: 14px;
+		font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+		font-size: 10px;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: rgba(200, 149, 108, 0.8);
+		background: rgba(10, 10, 10, 0.75);
+		backdrop-filter: blur(8px);
+		-webkit-backdrop-filter: blur(8px);
+		border: 1px solid rgba(200, 149, 108, 0.12);
+		padding: 4px 10px;
+		border-radius: 4px;
+		pointer-events: none;
+		z-index: 10;
+		opacity: 1;
+		transition: opacity 0.3s ease;
 	}
 
 	@media (max-width: 640px) {

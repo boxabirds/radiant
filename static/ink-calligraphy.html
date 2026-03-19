@@ -195,6 +195,7 @@
       if (age > b.life + 5) { brushes.splice(i, 1); continue; }
       if (age > b.life && b.phase === 'active') b.phase = 'done';
       if (b.phase === 'done') continue;
+      if (b.userControlled) continue;
 
       var t = age / b.life; // 0..1 normalized life
 
@@ -274,6 +275,105 @@
       if (b.trail.length > 400) b.trail.shift();
     }
   }
+
+  // ── Mouse drawing ──
+  var mouseDown = false;
+  var userBrush = null;
+
+  function startUserBrush(cx, cy, time) {
+    var px = cx * dpr;
+    var py = cy * dpr;
+    userBrush = {
+      id: brushId++, x: px, y: py, px: px, py: py, p2x: px, p2y: py,
+      angle: 0, speed: 0, maxW: 35, w: 35,
+      noff: Math.random() * 1000, birth: time, life: 9999,
+      phase: 'active', opacity: 0.85, curve: 0,
+      trail: [], pFreq: 0, pPhase: 0,
+      smoothSpeed: 0, lastMoveTime: performance.now(),
+      userControlled: true
+    };
+    brushes.push(userBrush);
+  }
+
+  function moveUserBrush(cx, cy) {
+    if (!userBrush || userBrush.phase !== 'active') return;
+    var px = cx * dpr;
+    var py = cy * dpr;
+    userBrush.p2x = userBrush.px; userBrush.p2y = userBrush.py;
+    userBrush.px = userBrush.x; userBrush.py = userBrush.y;
+    userBrush.x = px; userBrush.y = py;
+
+    // Measure speed in CSS pixels per second for consistent feel
+    var now = performance.now();
+    var elapsed = (now - userBrush.lastMoveTime) / 1000;
+    userBrush.lastMoveTime = now;
+    var dx = cx - (userBrush.px / dpr), dy = cy - (userBrush.py / dpr);
+    var cssDist = Math.sqrt(dx * dx + dy * dy);
+    var instantSpeed = elapsed > 0.0001 ? cssDist / elapsed : 0;
+    // Smooth the speed to avoid jitter
+    userBrush.smoothSpeed += (instantSpeed - userBrush.smoothSpeed) * 0.3;
+
+    // Width: slow (< 200 px/s) = full width, fast (> 1500 px/s) = hairline
+    var speedNorm = Math.min(userBrush.smoothSpeed / 1200, 1);
+    var targetW = userBrush.maxW * (1 - speedNorm * 0.85);
+    targetW = Math.max(2, targetW);
+    userBrush.w += (targetW - userBrush.w) * 0.4;
+
+    // Draw the stroke segment
+    var shift = noise.noise2D(px * 0.002, py * 0.002) * 0.08;
+    var rI, gI, bI;
+    if (darkMode) { rI = 210 + shift * 30 | 0; gI = 205 + shift * 25 | 0; bI = 200 + shift * 20 | 0; }
+    else { rI = 18 + shift * 12 | 0; gI = 14 + shift * 10 | 0; bI = 12 + shift * 8 | 0; }
+
+    var alpha = userBrush.opacity * INK_DENSITY;
+
+    inkCtx.save();
+    inkCtx.lineCap = 'round';
+    inkCtx.lineJoin = 'round';
+    inkCtx.lineWidth = userBrush.w;
+    inkCtx.strokeStyle = 'rgba(' + rI + ',' + gI + ',' + bI + ',' + alpha + ')';
+    inkCtx.beginPath();
+    inkCtx.moveTo(userBrush.p2x, userBrush.p2y);
+    inkCtx.quadraticCurveTo(userBrush.px, userBrush.py, userBrush.x, userBrush.y);
+    inkCtx.stroke();
+
+    if (userBrush.w > 8) {
+      inkCtx.lineWidth = userBrush.w * 1.5;
+      inkCtx.strokeStyle = 'rgba(' + rI + ',' + gI + ',' + bI + ',' + (alpha * 0.04) + ')';
+      inkCtx.beginPath();
+      inkCtx.moveTo(userBrush.p2x, userBrush.p2y);
+      inkCtx.quadraticCurveTo(userBrush.px, userBrush.py, userBrush.x, userBrush.y);
+      inkCtx.stroke();
+    }
+    inkCtx.restore();
+
+    userBrush.trail.push({ x: px, y: py, w: userBrush.w, t: simTime, a: alpha });
+    if (userBrush.trail.length > 400) userBrush.trail.shift();
+  }
+
+  function endUserBrush() {
+    if (userBrush) userBrush.phase = 'done';
+    userBrush = null;
+  }
+
+  canvas.addEventListener('mousedown', function(e) {
+    mouseDown = true;
+    startUserBrush(e.clientX, e.clientY, simTime);
+  });
+  canvas.addEventListener('mousemove', function(e) {
+    if (mouseDown) moveUserBrush(e.clientX, e.clientY);
+  });
+  canvas.addEventListener('mouseup', function() { mouseDown = false; endUserBrush(); });
+  canvas.addEventListener('mouseleave', function() { if (mouseDown) { mouseDown = false; endUserBrush(); } });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault(); mouseDown = true;
+    startUserBrush(e.touches[0].clientX, e.touches[0].clientY, simTime);
+  }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    if (mouseDown) moveUserBrush(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() { mouseDown = false; endUserBrush(); });
 
   // ── Ink wash ──
   function drawInkWash(time) {

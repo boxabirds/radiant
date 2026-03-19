@@ -223,6 +223,19 @@
 
   window.addEventListener('resize', resize);
 
+  // ── Mouse state ──
+  var mouseX = 0, mouseY = 0;
+  var mouseActive = false;
+  var mouseDown = false;
+
+  canvas.addEventListener('mousemove', function(e) { mouseX = e.clientX; mouseY = e.clientY; mouseActive = true; });
+  canvas.addEventListener('mouseleave', function() { mouseActive = false; });
+  canvas.addEventListener('mousedown', function(e) { mouseDown = true; mouseX = e.clientX; mouseY = e.clientY; mouseActive = true; });
+  canvas.addEventListener('mouseup', function() { mouseDown = false; });
+  canvas.addEventListener('touchstart', function(e) { e.preventDefault(); mouseDown = true; mouseActive = true; mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY; }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) { e.preventDefault(); mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY; }, { passive: false });
+  canvas.addEventListener('touchend', function() { mouseDown = false; mouseActive = false; });
+
   // ── Animation state ──
   var time = 0;
   var paused = false;
@@ -278,6 +291,20 @@
       var v = velScale[i] * speed;
       px += Math.cos(angle) * v;
       py += Math.sin(angle) * v;
+
+      // Mouse interaction: repel on hover, attract on click
+      if (mouseActive) {
+        var mdx = px - mouseX;
+        var mdy = py - mouseY;
+        var md = Math.sqrt(mdx * mdx + mdy * mdy);
+        if (md > 1 && md < 150) {
+          var mForce = mouseDown ? -3.0 : 4.0;
+          var falloff = (1 - md / 150);
+          falloff *= falloff;
+          px += (mdx / md) * mForce * falloff;
+          py += (mdy / md) * mForce * falloff;
+        }
+      }
 
       // Wrap around edges
       if (px < 0) px += W;

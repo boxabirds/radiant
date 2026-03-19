@@ -469,6 +469,31 @@ void main() {
   var bhScaleVal = 0.0;
   var chromaticVal = 0.0;
 
+  // Mouse drag to control viewing angle
+  var mouseDown = false;
+  var lastMX = 0, lastMY = 0;
+  canvas.addEventListener('mousedown', function(e) { mouseDown = true; lastMX = e.clientX; lastMY = e.clientY; });
+  canvas.addEventListener('mousemove', function(e) {
+    if (mouseDown) {
+      tiltVal += (e.clientY - lastMY) * 0.003;
+      rotateVal += (e.clientX - lastMX) * 0.003;
+      tiltVal = Math.max(-0.8, Math.min(0.8, tiltVal));
+      lastMX = e.clientX; lastMY = e.clientY;
+    }
+  });
+  canvas.addEventListener('mouseup', function() { mouseDown = false; });
+  canvas.addEventListener('touchstart', function(e) { e.preventDefault(); mouseDown = true; lastMX = e.touches[0].clientX; lastMY = e.touches[0].clientY; }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    if (mouseDown) {
+      tiltVal += (e.touches[0].clientY - lastMY) * 0.003;
+      rotateVal += (e.touches[0].clientX - lastMX) * 0.003;
+      tiltVal = Math.max(-0.8, Math.min(0.8, tiltVal));
+      lastMX = e.touches[0].clientX; lastMY = e.touches[0].clientY;
+    }
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() { mouseDown = false; });
+
   var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
   var needsResize = true;
   var running = true;

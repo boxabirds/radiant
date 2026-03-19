@@ -54,6 +54,10 @@
     [215, 215, 235],  // cool silver
   ];
 
+  // ── Mouse state ──
+  var mouseX = 0, mouseY = 0;
+  var mouseActive = false;
+
   // ── Runtime state ──
   var W = 0, H = 0, dpr = 1;
   var particles = [];
@@ -164,11 +168,25 @@
       var ny = st * sp;
       var nz = ct;
 
+      // Add mouse as light source when active
+      var allDirs = dirs;
+      if (mouseActive) {
+        // Direction from particle to mouse (in pixel coords)
+        var mdx = mouseX * dpr - p.x;
+        var mdy = mouseY * dpr - p.y;
+        var mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+        if (mdist > 1) {
+          // Proximity-based intensity boost
+          var mProx = Math.max(0, 1 - mdist / (Math.max(W, H) * 0.4));
+          allDirs = dirs.concat([{ x: mdx / mdist * mProx, y: mdy / mdist * mProx, z: 0.3 * mProx }]);
+        }
+      }
+
       // Specular: |dot(N, L)|  — mirrors on both sides of disc
       var smax = 0;
       var sr2 = p.r, sg2 = p.g, sb2 = p.b;
-      for (var li = 0; li < dirs.length; li++) {
-        var d = dirs[li];
+      for (var li = 0; li < allDirs.length; li++) {
+        var d = allDirs[li];
         var dot = Math.abs(nx * d.x + ny * d.y + nz * d.z);
         if (dot > 0.92) {
           var s = (dot - 0.92) / 0.08; // 0..1 in narrow alignment cone
@@ -335,6 +353,12 @@
     initLights();
     requestAnimationFrame(frame);
   }
+
+  canvas.addEventListener('mousemove', function(e) { mouseX = e.clientX; mouseY = e.clientY; mouseActive = true; });
+  canvas.addEventListener('mouseleave', function() { mouseActive = false; });
+  canvas.addEventListener('touchstart', function(e) { e.preventDefault(); mouseActive = true; mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY; }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) { e.preventDefault(); mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY; }, { passive: false });
+  canvas.addEventListener('touchend', function() { mouseActive = false; });
 
   window.addEventListener('resize', function() {
     resize();

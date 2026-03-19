@@ -543,6 +543,15 @@
     else startLoop();
   });
 
+  // Mouse: click to grow a new tree immediately
+  canvas.addEventListener('click', function() {
+    createTree();
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    createTree();
+  }, { passive: false });
+
   createTree();
   requestAnimationFrame(frame);
 

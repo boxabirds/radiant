@@ -230,10 +230,45 @@
     return coneFalloff * distFalloff * sl.intensity * sl.currentBreath;
   }
 
+  // ── Mouse state ──
+  var mouseX = 0, mouseY = 0;
+  var mouseActive = false;
+  var mouseSpotlight = null;
+
+  function createMouseSpotlight() {
+    var diag = Math.sqrt(W * W + H * H);
+    mouseSpotlight = {
+      ox: mouseX, oy: -H * 0.25,
+      angle: Math.PI * 0.5, angleBase: Math.PI * 0.5,
+      angleRange: 0, angleSpeed: 0, anglePhase: 0,
+      coneWidth: 0.55, reach: diag * 1.0,
+      r: 255, g: 230, b: 190,
+      intensity: 0.8, breathPhase: 0, breathSpeed: 0,
+      rayCount: 8, currentBreath: 1.0
+    };
+  }
+
+  canvas.addEventListener('mousemove', function(e) {
+    mouseX = e.clientX; mouseY = e.clientY;
+    if (!mouseActive) {
+      mouseActive = true;
+      createMouseSpotlight();
+    }
+  });
+  canvas.addEventListener('mouseleave', function() { mouseActive = false; mouseSpotlight = null; });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault(); mouseActive = true;
+    mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY;
+    createMouseSpotlight();
+  }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) { e.preventDefault(); mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY; }, { passive: false });
+  canvas.addEventListener('touchend', function() { mouseActive = false; mouseSpotlight = null; });
+
   // ── Animation state ──
   var time = 0;
   var running = true;
   var lastTime = 0;
+  var allSpots = [];
 
   function draw(timestamp) {
     if (!running) {
@@ -259,17 +294,29 @@
       sl.currentBreath = 0.7 + 0.3 * Math.sin(time * sl.breathSpeed * 2 + sl.breathPhase);
     }
 
+    // ── Update mouse spotlight: origin above viewport, aimed at cursor ──
+    if (mouseActive && mouseSpotlight) {
+      mouseSpotlight.ox = mouseX;
+      mouseSpotlight.oy = -H * 0.25;
+      mouseSpotlight.angle = Math.atan2(mouseY - mouseSpotlight.oy, mouseX - mouseSpotlight.ox);
+      mouseSpotlight.currentBreath = 1.0;
+    }
+
+    // ── Build active spotlights list ──
+    var allSpots = spotlights.slice();
+    if (mouseActive && mouseSpotlight) allSpots.push(mouseSpotlight);
+
     // ── Draw spotlight cones (atmospheric glow layer) ──
     ctx.globalCompositeOperation = 'lighter';
 
-    for (var s = 0; s < spotlights.length; s++) {
-      var sl = spotlights[s];
+    for (var s = 0; s < allSpots.length; s++) {
+      var sl = allSpots[s];
       drawSpotlightCone(sl);
     }
 
     // ── Draw volumetric rays ──
-    for (var s = 0; s < spotlights.length; s++) {
-      drawVolumetricRays(spotlights[s]);
+    for (var s = 0; s < allSpots.length; s++) {
+      drawVolumetricRays(allSpots[s]);
     }
 
     // ── Update and draw particles ──
@@ -410,12 +457,12 @@
       if (p.y < -10) p.y += H + 20;
       if (p.y > H + 10) p.y -= H + 20;
 
-      // Calculate total illumination from all spotlights
+      // Calculate total illumination from all spotlights (including mouse)
       var totalIllum = 0;
       var totalR = 0, totalG = 0, totalB = 0;
 
-      for (var s = 0; s < spotlights.length; s++) {
-        var sl = spotlights[s];
+      for (var s = 0; s < allSpots.length; s++) {
+        var sl = allSpots[s];
         var illum = getSpotlightIllumination(p.x, p.y, sl);
         if (illum > 0) {
           totalIllum += illum;
@@ -481,8 +528,8 @@
       var totalIllum = 0;
       var totalR = 0, totalG = 0, totalB = 0;
 
-      for (var s = 0; s < spotlights.length; s++) {
-        var sl = spotlights[s];
+      for (var s = 0; s < allSpots.length; s++) {
+        var sl = allSpots[s];
         var illum = getSpotlightIllumination(m.x, m.y, sl);
         if (illum > 0) {
           totalIllum += illum;

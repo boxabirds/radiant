@@ -58,6 +58,11 @@
   var IMPULSE_STRENGTH = 140;
   var IMPULSE_FALLOFF = 0.5;
 
+  // ── Mouse state ──
+  var mouseX = 0, mouseY = 0;
+  var mouseActive = false;
+  var mouseDown = false;
+
   // ── State ──
   var W, H, dpr;
   var running = true;
@@ -373,6 +378,20 @@
         ay += toAY / aDist * aStr;
       }
 
+      // Mouse interaction: repel on hover, attract on click
+      if (mouseActive) {
+        var toMX = mouseX - x;
+        var toMY = mouseY - y;
+        var mDist = Math.sqrt(toMX * toMX + toMY * toMY);
+        if (mDist > 5 && mDist < 350) {
+          var mStr = mouseDown ? 250 : -400;
+          var falloff = 1 - mDist / 350;
+          falloff *= falloff;
+          ax += toMX / mDist * mStr * falloff;
+          ay += toMY / mDist * mStr * falloff;
+        }
+      }
+
       // Spatially varying wind: global direction shifts slowly, with local noise variation
       // This creates sweeping forces that stretch the flock into streams
       var globalAngle = smoothNoise(windT * 15, 0) * 6.2832;
@@ -609,6 +628,14 @@
   scheduleImpulse();
   lastTime = 0;
   requestAnimationFrame(loop);
+
+  canvas.addEventListener('mousemove', function(e) { mouseX = e.clientX; mouseY = e.clientY; mouseActive = true; });
+  canvas.addEventListener('mouseleave', function() { mouseActive = false; });
+  canvas.addEventListener('mousedown', function(e) { mouseDown = true; mouseX = e.clientX; mouseY = e.clientY; mouseActive = true; });
+  canvas.addEventListener('mouseup', function() { mouseDown = false; });
+  canvas.addEventListener('touchstart', function(e) { e.preventDefault(); mouseDown = true; mouseActive = true; mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY; }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) { e.preventDefault(); mouseX = e.touches[0].clientX; mouseY = e.touches[0].clientY; }, { passive: false });
+  canvas.addEventListener('touchend', function() { mouseDown = false; mouseActive = false; });
 
   window.addEventListener('resize', function () {
     var oldW = W, oldH = H;

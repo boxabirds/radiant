@@ -119,6 +119,17 @@
   let maxPhysicalLength = pendulums[0].length;
   let minPhysicalLength = pendulums[NUM_PENDULUMS - 1].length;
 
+  // Mouse interaction: click to apply a gravity wave from click position
+  var clickImpulses = [];
+
+  canvas.addEventListener('click', function(e) {
+    clickImpulses.push({ x: e.clientX, y: e.clientY, time: 0, strength: 0.15 });
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    clickImpulses.push({ x: e.touches[0].clientX, y: e.touches[0].clientY, time: 0, strength: 0.15 });
+  }, { passive: false });
+
   let startTime = null;
 
   function animate(timestamp) {
@@ -164,6 +175,13 @@
     ctx.lineTo(w - margin + 20, pivotY);
     ctx.stroke();
 
+    // Update click impulses
+    for (var ci = clickImpulses.length - 1; ci >= 0; ci--) {
+      clickImpulses[ci].time += 1/60;
+      clickImpulses[ci].strength *= 0.98;
+      if (clickImpulses[ci].strength < 0.001) clickImpulses.splice(ci, 1);
+    }
+
     // Calculate bob positions and update trails
     const bobPositions = [];
     for (let i = 0; i < NUM_PENDULUMS; i++) {
@@ -175,6 +193,18 @@
       const displayLength = minDisplayLength + (maxDisplayLength - minDisplayLength) * lengthRatio;
 
       const bob = p.getBobPosition(time, pivotX, pivotY, displayLength);
+
+      // Apply click impulses as displacement
+      for (var ci = 0; ci < clickImpulses.length; ci++) {
+        var imp = clickImpulses[ci];
+        var dx = pivotX - imp.x;
+        var dy = bob.y - imp.y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        var wave = Math.sin(dist * 0.02 - imp.time * 8) * imp.strength * displayLength;
+        var falloff = Math.exp(-dist * 0.003);
+        bob.x += wave * falloff;
+      }
+
       bobPositions.push({ x: bob.x, y: bob.y, pivotX, pivotY, displayLength });
 
       // Update trail

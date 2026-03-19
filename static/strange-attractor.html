@@ -106,6 +106,31 @@
     ));
   }
 
+  // Mouse drag to rotate view
+  let mouseDown = false;
+  let lastMouseX = 0;
+  let manualRotation = 0;
+  let autoRotate = true;
+
+  canvas.addEventListener('mousedown', function(e) { mouseDown = true; lastMouseX = e.clientX; autoRotate = false; });
+  canvas.addEventListener('mousemove', function(e) {
+    if (mouseDown) {
+      manualRotation += (e.clientX - lastMouseX) * 0.005;
+      lastMouseX = e.clientX;
+    }
+  });
+  canvas.addEventListener('mouseup', function() { mouseDown = false; });
+  canvas.addEventListener('dblclick', function() { autoRotate = true; });
+  canvas.addEventListener('touchstart', function(e) { e.preventDefault(); mouseDown = true; lastMouseX = e.touches[0].clientX; autoRotate = false; }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    if (mouseDown) {
+      manualRotation += (e.touches[0].clientX - lastMouseX) * 0.005;
+      lastMouseX = e.touches[0].clientX;
+    }
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() { mouseDown = false; });
+
   // Pre-run to build up trails
   for (let i = 0; i < 800; i++) {
     particles.forEach(p => p.step());
@@ -213,8 +238,12 @@
       particles.forEach(p => p.step());
     }
 
-    // Slow rotation
-    rotationAngle += 0.002;
+    // Slow rotation (auto or manual)
+    if (autoRotate) {
+      rotationAngle += 0.002;
+    } else {
+      rotationAngle = manualRotation;
+    }
 
     // Determine scale to fill canvas nicely
     // ?p=N increases the divisor, shrinking the attractor for embedded contexts

@@ -133,6 +133,36 @@
     buildGrid();
   }
 
+  // Mouse interaction: click/drag to inject radial impulse from cursor
+  var mouseDown = false;
+  canvas.addEventListener('mousedown', function(e) { mouseDown = true; injectMouseImpulse(e.clientX, e.clientY); });
+  canvas.addEventListener('mousemove', function(e) { if (mouseDown) injectMouseImpulse(e.clientX, e.clientY); });
+  canvas.addEventListener('mouseup', function() { mouseDown = false; });
+  canvas.addEventListener('touchstart', function(e) { e.preventDefault(); mouseDown = true; injectMouseImpulse(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) { e.preventDefault(); if (mouseDown) injectMouseImpulse(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+  canvas.addEventListener('touchend', function() { mouseDown = false; });
+
+  function injectMouseImpulse(mx, my) {
+    var strength = 18 * IMPULSE_STRENGTH;
+    var radius = 4;
+    for (var r = 0; r < ROWS; r++) {
+      for (var c = 0; c < COLS; c++) {
+        var i = idx(c, r);
+        var dx = restX[i] - mx;
+        var dy = restY[i] - my;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < radius * Math.max(spacingX, spacingY) && dist > 0.1) {
+          var falloff = 1 - dist / (radius * Math.max(spacingX, spacingY));
+          falloff *= falloff;
+          velX[i] += (dx / dist) * strength * falloff;
+          velY[i] += (dy / dist) * strength * falloff;
+        }
+      }
+    }
+    flashes.push({ x: mx, y: my, life: 1.0, ring: 1.0 });
+    screenFlash = 0.03;
+  }
+
   window.addEventListener('resize', resize);
   resize();
 

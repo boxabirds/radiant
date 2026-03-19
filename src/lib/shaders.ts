@@ -1099,19 +1099,6 @@ export const shaders: Shader[] = [
 		]
 	},
 	{
-		id: 'silk-threads',
-		file: 'silk-threads.html',
-		title: 'Silk Threads',
-		desc: 'Flowing luminous wave lines with organic noise perturbation and warm amber glow.',
-		inspiration: 'Cate Blanchett',
-		tags: ['fill', 'geometric'],
-		technique: 'webgl',
-		params: [
-			{ name: 'WAVE_SPEED', label: 'Wave Speed', min: 0.2, max: 3.0, step: 0.1, default: 1.0 },
-			{ name: 'LINE_COUNT', label: 'Line Count', min: 3, max: 12, step: 1, default: 6 }
-		]
-	},
-	{
 		id: 'magnetic-field',
 		file: 'magnetic-field.html',
 		title: 'Magnetic Field',

@@ -1183,6 +1183,7 @@ export const shaders: Shader[] = [
 		file: 'synth-ribbon.html',
 		title: 'Synth Ribbon',
 		desc: 'Flowing metallic ribbons twisting through 3D space with chrome reflections in hot pink and cyan.',
+		inspiration: 'Chappell Roan',
 		tags: ['fill', 'geometric'],
 		technique: 'canvas-2d',
 		params: [
@@ -1195,11 +1196,77 @@ export const shaders: Shader[] = [
 		file: 'hologram-glitch.html',
 		title: 'Hologram Glitch',
 		desc: 'Abstract holographic texture with chromatic aberration, scanlines, and controlled glitch bursts.',
+		inspiration: 'Daft Punk',
 		tags: ['fill', 'noise'],
 		technique: 'webgl',
 		params: [
 			{ name: 'GLITCH_INTENSITY', label: 'Glitch Intensity', min: 0.0, max: 2.0, step: 0.1, default: 1.0 },
 			{ name: 'SCAN_SPEED', label: 'Scan Speed', min: 0.1, max: 2.0, step: 0.05, default: 1.0 }
+		]
+	},
+	{
+		id: 'wind-carved',
+		file: 'wind-carved.html',
+		title: 'Wind Carved',
+		desc: 'Anisotropic wind erosion ridges with dramatic shifting directional light and drifting sand wisps.',
+		inspiration: 'Sand',
+		tags: ['fill', 'noise'],
+		technique: 'webgl',
+		params: [
+			{ name: 'WIND_SPEED', label: 'Wind Speed', min: 0.1, max: 2.0, step: 0.05, default: 0.5 },
+			{ name: 'EROSION_DEPTH', label: 'Erosion Depth', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
+		]
+	},
+	{
+		id: 'erosion-channels',
+		file: 'erosion-channels.html',
+		title: 'Erosion Channels',
+		desc: 'Fractal dendritic channel networks carving through warm sandstone terrain with depth-revealed strata.',
+		inspiration: 'Sand',
+		tags: ['fill', 'noise', 'organic'],
+		technique: 'webgl',
+		params: [
+			{ name: 'CHANNEL_SPEED', label: 'Channel Speed', min: 0.1, max: 2.0, step: 0.05, default: 0.5 },
+			{ name: 'CHANNEL_DEPTH', label: 'Channel Depth', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
+		]
+	},
+	{
+		id: 'sand-prism',
+		file: 'sand-prism.html',
+		title: 'Sand Prism',
+		desc: 'Spectral caustic light refracting through crystalline quartz grains with chromatic dispersion.',
+		inspiration: 'Sand',
+		tags: ['fill', 'noise', 'geometric'],
+		technique: 'webgl',
+		params: [
+			{ name: 'REFRACTION', label: 'Refraction', min: 0.3, max: 3.0, step: 0.1, default: 1.0 },
+			{ name: 'CRYSTAL_SCALE', label: 'Crystal Scale', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
+		]
+	},
+	{
+		id: 'golden-sediment',
+		file: 'golden-sediment.html',
+		title: 'Golden Sediment',
+		desc: 'Layered sedimentary strata with tectonic folding, crystalline sparkles, and cross-cutting fault lines.',
+		inspiration: 'Sand',
+		tags: ['fill', 'noise', 'organic'],
+		technique: 'webgl',
+		params: [
+			{ name: 'FOLD_SPEED', label: 'Fold Speed', min: 0.1, max: 2.0, step: 0.05, default: 0.5 },
+			{ name: 'LAYER_COUNT', label: 'Layer Count', min: 8, max: 24, step: 1, default: 16 }
+		]
+	},
+	{
+		id: 'barchan-dance',
+		file: 'barchan-dance.html',
+		title: 'Barchan Dance',
+		desc: 'Migrating crescent-shaped dunes with shadow casting, merging physics, and trailing sand plumes.',
+		inspiration: 'Sand',
+		tags: ['fill', 'particles', 'physics'],
+		technique: 'canvas-2d',
+		params: [
+			{ name: 'WIND_SPEED', label: 'Wind Speed', min: 0.1, max: 2.0, step: 0.05, default: 0.5 },
+			{ name: 'DUNE_COUNT', label: 'Dune Density', min: 0.3, max: 2.0, step: 0.1, default: 1.0 }
 		]
 	}
 ];

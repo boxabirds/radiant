@@ -5,6 +5,16 @@
 	<div class="entries">
 		<div class="entry">
 			<div class="entry-header">
+				<span class="version">v1.1</span>
+				<span class="date">March 19, 2026</span>
+			</div>
+			<ul>
+				<li>Mouse & touch interactivity for all 82 shaders — move, click, or drag to interact</li>
+				<li>Auto-detected interaction hints on detail pages</li>
+			</ul>
+		</div>
+		<div class="entry">
+			<div class="entry-header">
 				<span class="version">v1.0</span>
 				<span class="date">March 18, 2026</span>
 			</div>

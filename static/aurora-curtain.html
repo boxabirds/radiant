@@ -51,6 +51,8 @@
     'uniform vec2 u_res;',
     'uniform float u_waveSpeed;',
     'uniform float u_lineCount;',
+    'uniform float u_amplitude;',
+    'uniform float u_rotation;',
     'uniform vec2 u_mouse;',
     'uniform float u_dragAngle;',
     '',
@@ -88,13 +90,13 @@
     '',
     'void main() {',
     '  vec2 uv = (gl_FragCoord.xy - 0.5 * u_res.xy) / u_res.y;',
-    '  uv = rot2(u_dragAngle) * uv;',
-    '  // Mouse: X controls wave speed, Y controls amplitude',
-    '  float mouseAmp = 1.0;',
+    '  uv = rot2(u_dragAngle + u_rotation) * uv;',
+    '  // Base from sliders, mouse modifies on top',
+    '  float mouseAmp = u_amplitude;',
     '  float mouseFreq = 1.0;',
     '  if (u_mouse.x > 0.0) {',
     '    vec2 mUV = u_mouse / u_res;',
-    '    mouseAmp = 0.3 + mUV.y * 1.4;',
+    '    mouseAmp *= 0.3 + mUV.y * 1.4;',
     '    mouseFreq = 0.5 + mUV.x * 1.0;',
     '  }',
     '  float t = u_time * u_waveSpeed;',
@@ -167,6 +169,8 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uWaveSpeed = gl.getUniformLocation(prog, 'u_waveSpeed');
   var uLineCount = gl.getUniformLocation(prog, 'u_lineCount');
+  var uAmplitude = gl.getUniformLocation(prog, 'u_amplitude');
+  var uRotation = gl.getUniformLocation(prog, 'u_rotation');
   var uMouse = gl.getUniformLocation(prog, 'u_mouse');
   var uDragAngle = gl.getUniformLocation(prog, 'u_dragAngle');
 
@@ -175,6 +179,8 @@
   var mouseDown = false, lastMX = 0;
   var waveSpeedVal = 1.0;
   var lineCountVal = 6.0;
+  var amplitudeVal = 1.0;
+  var rotationVal = 0.0;
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2) * pixelScale;
   var needsResize = true;
@@ -198,6 +204,8 @@
     gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
     gl.uniform1f(uWaveSpeed, waveSpeedVal);
     gl.uniform1f(uLineCount, lineCountVal);
+    gl.uniform1f(uAmplitude, amplitudeVal);
+    gl.uniform1f(uRotation, rotationVal);
     gl.uniform2f(uMouse, mouseXVal, mouseYVal);
     gl.uniform1f(uDragAngle, dragAngle);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -251,6 +259,8 @@
       switch (e.data.name) {
         case 'WAVE_SPEED': waveSpeedVal = e.data.value; break;
         case 'LINE_COUNT': lineCountVal = e.data.value; break;
+        case 'AMPLITUDE': amplitudeVal = e.data.value; break;
+        case 'ROTATION': rotationVal = e.data.value; break;
       }
     }
   });

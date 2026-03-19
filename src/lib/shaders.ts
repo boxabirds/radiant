@@ -1121,7 +1121,9 @@ export const shaders: Shader[] = [
 		technique: 'webgl',
 		params: [
 			{ name: 'WAVE_SPEED', label: 'Wave Speed', min: 0.2, max: 3.0, step: 0.1, default: 1.0 },
-			{ name: 'LINE_COUNT', label: 'Curtains', min: 3, max: 12, step: 1, default: 6 }
+			{ name: 'LINE_COUNT', label: 'Curtains', min: 3, max: 12, step: 1, default: 6 },
+			{ name: 'AMPLITUDE', label: 'Amplitude', min: 0.2, max: 2.0, step: 0.05, default: 1.0 },
+			{ name: 'ROTATION', label: 'Rotation', min: -1.57, max: 1.57, step: 0.05, default: 0.0 }
 		]
 	},
 	{

@@ -163,12 +163,19 @@
     '  // ── View and light setup — mouse controls primary light direction ──',
     '  vec3 viewDir = normalize(vec3(0.0, 0.0, 1.0));',
     '  vec3 lightDir1 = normalize(vec3(0.4, 0.5, 0.9));',
-    '  if (u_mouse.x > 0.0) {',
-    '    vec2 mUV = u_mouse / u_res - 0.5;',
-    '    lightDir1 = normalize(vec3(mUV.x * 1.5, mUV.y * 1.5, 0.8));',
-    '  }',
     '  vec3 lightDir2 = normalize(vec3(-0.6, -0.3, 0.7));',
     '  vec3 lightDir3 = normalize(vec3(0.0, 0.8, 0.5));',
+    '  // Mouse creates a visible bump/dent in the gold surface',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mUV = (u_mouse - u_res * 0.5) / min(u_res.x, u_res.y);',
+    '    vec2 toMouse = uv - mUV;',
+    '    float md = length(toMouse);',
+    '    float bump = exp(-md * md * 25.0);',
+    '    // Strong normal perturbation — creates bright specular ring',
+    '    normal = normalize(normal + vec3(toMouse * bump * 12.0, 0.0));',
+    '    // Also dimple the height to affect the field-based coloring',
+    '    height += bump * 0.3;',
+    '  }',
     '  ',
     '  // ── Gold material properties ──',
     '  vec3 goldBase = vec3(0.83, 0.61, 0.22);',
@@ -296,6 +303,10 @@
   var uViscosity = gl.getUniformLocation(prog, 'u_viscosity');
   var uMouse = gl.getUniformLocation(prog, 'u_mouse');
 
+  var flowSpeedVal = 0.4;
+  var viscosityVal = 0.6;
+
+  var dpr = Math.min(window.devicePixelRatio || 1, 2) * pixelScale;
   var mouseXVal = -1.0, mouseYVal = -1.0;
 
   canvas.addEventListener('mousemove', function(e) {
@@ -320,11 +331,6 @@
   canvas.addEventListener('touchend', function() {
     mouseXVal = -1.0; mouseYVal = -1.0;
   });
-
-  var flowSpeedVal = 0.4;
-  var viscosityVal = 0.6;
-
-  var dpr = Math.min(window.devicePixelRatio || 1, 2) * pixelScale;
   var needsResize = true;
 
   function resize() {

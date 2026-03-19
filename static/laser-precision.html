@@ -662,13 +662,22 @@
     burnScorch(bx - 2, by - 2, bx + 2, by + 2);
     burnScorch(bx - 2, by + 2, bx + 2, by - 2);
   }
-  canvas.addEventListener('click', onBurstClick);
-  canvas.addEventListener('touchend', function (e) {
-    if (e.changedTouches.length === 1) {
-      var t = e.changedTouches[0];
-      onBurstClick({ clientX: t.clientX, clientY: t.clientY });
-    }
+  // Click to burst, drag to continuously fire laser
+  var laserDown = false;
+  canvas.addEventListener('mousedown', function(e) { laserDown = true; onBurstClick(e); });
+  canvas.addEventListener('mousemove', function(e) {
+    if (laserDown) onBurstClick(e);
   });
+  canvas.addEventListener('mouseup', function() { laserDown = false; });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault(); laserDown = true;
+    onBurstClick({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY });
+  }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    if (laserDown) onBurstClick({ clientX: e.touches[0].clientX, clientY: e.touches[0].clientY });
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() { laserDown = false; });
 
   // ── Main render loop ──
   var lastTime = 0;

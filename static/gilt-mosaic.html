@@ -56,6 +56,8 @@
     'uniform float u_waveDelay;',
     'uniform float u_waveDir;',
     'uniform vec2 u_mouse;',
+    'uniform vec2 u_click;',
+    'uniform float u_clickTime;',
     '',
     '#define PI 3.14159265359',
     '#define TAU 6.28318530718',
@@ -202,6 +204,19 @@
     '  vec2 flipData = waveFlip(tileCenter, u_time, aspect);',
     '  float flipAngle = flipData.x * u_animMode;',
     '  float inTransition = flipData.y * u_animMode;',
+    '',
+    '  // Click-triggered radial flip wave',
+    '  if (u_clickTime > 0.0) {',
+    '    vec2 clickUV = u_click / u_res * aspect;',
+    '    float clickAge = u_time - u_clickTime;',
+    '    float radDist = length(tileCenter * aspect - clickUV);',
+    '    float waveFront = clickAge * 1.2;',
+    '    float inWave = smoothstep(waveFront + 0.15, waveFront - 0.1, radDist);',
+    '    inWave *= smoothstep(0.0, 0.1, clickAge) * smoothstep(3.0, 1.5, clickAge);',
+    '    float clickFlip = inWave * PI;',
+    '    flipAngle += clickFlip;',
+    '    inTransition = max(inTransition, inWave);',
+    '  }',
     '',
     '  float cosFlip = cos(flipAngle);',
     '  float abscos = abs(cosFlip);',
@@ -429,8 +444,11 @@
   var uWaveDelay = gl.getUniformLocation(prog, 'u_waveDelay');
   var uWaveDir = gl.getUniformLocation(prog, 'u_waveDir');
   var uMouse = gl.getUniformLocation(prog, 'u_mouse');
+  var uClick = gl.getUniformLocation(prog, 'u_click');
+  var uClickTime = gl.getUniformLocation(prog, 'u_clickTime');
 
   var mouseXVal = -1.0, mouseYVal = -1.0;
+  var clickXVal = 0.0, clickYVal = 0.0, clickTimeVal = -10.0;
   var lightSpeedVal = 0.4;
   var tileScaleVal = 1.0;
   var animModeVal = 1.0;
@@ -463,6 +481,8 @@
     gl.uniform1f(uWaveDelay, waveDelayVal);
     gl.uniform1f(uWaveDir, waveDirVal);
     gl.uniform2f(uMouse, mouseXVal, mouseYVal);
+    gl.uniform2f(uClick, clickXVal, clickYVal);
+    gl.uniform1f(uClickTime, clickTimeVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }
@@ -475,6 +495,11 @@
 
   requestAnimationFrame(render);
 
+  canvas.addEventListener('click', function(e) {
+    clickXVal = e.clientX * dpr;
+    clickYVal = (canvas.clientHeight - e.clientY) * dpr;
+    clickTimeVal = performance.now() * 0.001;
+  });
   canvas.addEventListener('mousemove', function(e) {
     mouseXVal = e.clientX * dpr;
     mouseYVal = (canvas.clientHeight - e.clientY) * dpr;

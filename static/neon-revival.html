@@ -218,13 +218,7 @@
     'void main() {',
     '  vec2 origin = u_scale > 0.0 ? u_center : vec2(0.5);',
     '  float sc = u_scale > 0.0 ? u_scale : 1.0;',
-    '  // ── Mouse: shift neon shape center ──',
-    '  vec2 mouseShift = vec2(0.0);',
-    '  if (u_mouse.x > 0.0) {',
-    '    vec2 mNorm = u_mouse / u_res;',
-    '    mouseShift = (mNorm - 0.5) * 0.3;',
-    '  }',
-    '  vec2 uv = (gl_FragCoord.xy - u_res * (origin + mouseShift)) / (min(u_res.x, u_res.y) * sc);',
+    '  vec2 uv = (gl_FragCoord.xy - u_res * origin) / (min(u_res.x, u_res.y) * sc);',
     '  float aspect = u_res.x / u_res.y;',
     '  float t = u_time;',
     '',
@@ -730,30 +724,14 @@
   var uScale = gl.getUniformLocation(prog, 'u_scale');
   var uMouse = gl.getUniformLocation(prog, 'u_mouse');
 
-  var mouseXVal = -1.0, mouseYVal = -1.0;
-
-  canvas.addEventListener('mousemove', function(e) {
-    mouseXVal = e.clientX * dpr;
-    mouseYVal = (canvas.clientHeight - e.clientY) * dpr;
-  });
-  canvas.addEventListener('mouseleave', function() {
-    mouseXVal = -1.0; mouseYVal = -1.0;
+  // Click to cycle through neon shapes
+  canvas.addEventListener('click', function() {
+    shapeVal = (shapeVal % 4) + 1;
   });
   canvas.addEventListener('touchstart', function(e) {
     e.preventDefault();
-    var touch = e.touches[0];
-    mouseXVal = touch.clientX * dpr;
-    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+    shapeVal = (shapeVal % 4) + 1;
   }, { passive: false });
-  canvas.addEventListener('touchmove', function(e) {
-    e.preventDefault();
-    var touch = e.touches[0];
-    mouseXVal = touch.clientX * dpr;
-    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
-  }, { passive: false });
-  canvas.addEventListener('touchend', function() {
-    mouseXVal = -1.0; mouseYVal = -1.0;
-  });
 
   var glowIntensityVal = 1.0;
   var flickerRateVal = 0.5;

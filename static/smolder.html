@@ -57,6 +57,7 @@
     'uniform float u_turbulence;',
     'uniform vec2 u_center;',
     'uniform float u_scale;',
+    'uniform vec2 u_mouse;',
     '',
     '#define PI 3.14159265359',
     '#define TAU 6.28318530718',
@@ -192,6 +193,10 @@
     '',
     'void main() {',
     '  vec2 origin = u_scale > 0.0 ? u_center : vec2(0.5);',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mUV = u_mouse / u_res;',
+    '    origin = mix(origin, mUV, 0.4);',
+    '  }',
     '  float sc = u_scale > 0.0 ? u_scale : 1.0;',
     '  vec2 uv = (gl_FragCoord.xy - u_res * origin) / (min(u_res.x, u_res.y) * sc);',
     '  float t = u_time;',
@@ -425,13 +430,39 @@
   var uTurbulence = gl.getUniformLocation(prog, 'u_turbulence');
   var uCenter = gl.getUniformLocation(prog, 'u_center');
   var uScale = gl.getUniformLocation(prog, 'u_scale');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
   var centerX = 0.0;
   var centerY = 0.0;
   var scaleVal = 0.0;
 
+  var mouseXVal = -1, mouseYVal = -1;
+
   var urlParams = new URLSearchParams(window.location.search);
   var pixelScale = parseFloat(urlParams.get('p')) || 1;
   var dpr = 1.0 / pixelScale;
+  var canvasScale = dpr / pixelScale;
+  canvas.addEventListener('mousemove', function(e) {
+    mouseXVal = e.clientX * canvasScale;
+    mouseYVal = (canvas.clientHeight - e.clientY) * canvasScale;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseXVal = -1; mouseYVal = -1;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * canvasScale;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * canvasScale;
+  }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * canvasScale;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * canvasScale;
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() {
+    mouseXVal = -1; mouseYVal = -1;
+  });
   var needsResize = true;
 
   function resize() {
@@ -457,6 +488,7 @@
     gl.uniform1f(uTurbulence, TURBULENCE);
     gl.uniform2f(uCenter, centerX, centerY);
     gl.uniform1f(uScale, scaleVal);
+    gl.uniform2f(uMouse, mouseXVal, mouseYVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }

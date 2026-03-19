@@ -52,6 +52,7 @@
     'uniform vec2 u_res;',
     'uniform float u_sweep;',
     'uniform float u_intensity;',
+    'uniform vec2 u_mouse;',
     '',
     '#define PI 3.14159265359',
     '',
@@ -138,6 +139,13 @@
     '  float t = u_time * u_sweep;',
     '  float intensity = u_intensity;',
     '',
+    '  // ── Mouse attraction: bend beams toward cursor ──',
+    '  vec2 mouseUV = vec2(-1.0);',
+    '  if (u_mouse.x > 0.0) {',
+    '    mouseUV = u_mouse / u_res;',
+    '    mouseUV.x = (mouseUV.x - 0.5) * aspect;',
+    '  }',
+    '',
     '  // ── Fog base: 3D FBM noise drifting slowly ──',
     '  vec3 fogCoord = vec3(fragUV * 3.0, t * 0.08);',
     '  fogCoord.y -= t * 0.03;  // slow upward drift',
@@ -178,6 +186,15 @@
     '',
     '    // Direction of cone center (pointing downward from top)',
     '    vec2 dir = vec2(sin(theta), -cos(theta));',
+    '',
+    '    // Mouse attraction: bend beam toward cursor',
+    '    if (mouseUV.x > -0.5) {',
+    '      vec2 toMouse = mouseUV - origin;',
+    '      float mouseAngle = atan(toMouse.x, -toMouse.y);',
+    '      float attraction = 0.3 / (1.0 + length(toMouse) * 2.0);',
+    '      float angleDiff = mouseAngle - theta;',
+    '      dir = vec2(sin(theta + angleDiff * attraction), -cos(theta + angleDiff * attraction));',
+    '    }',
     '',
     '    // Vector from origin to current pixel',
     '    vec2 toPixel = uv - origin;',
@@ -236,6 +253,16 @@
     '    theta += snap * snapGate * 0.18 * sin(t * beatFreq * 0.5);',
     '',
     '    vec2 dir = vec2(sin(theta), -cos(theta));',
+    '',
+    '    // Mouse attraction: bend beam toward cursor',
+    '    if (mouseUV.x > -0.5) {',
+    '      vec2 toMouse = mouseUV - origin;',
+    '      float mouseAngle = atan(toMouse.x, -toMouse.y);',
+    '      float attraction = 0.4 / (1.0 + length(toMouse) * 2.0);',
+    '      float angleDiff = mouseAngle - theta;',
+    '      dir = vec2(sin(theta + angleDiff * attraction), -cos(theta + angleDiff * attraction));',
+    '    }',
+    '',
     '    vec2 toPixel = uv - origin;',
     '    float along = dot(toPixel, dir);',
     '    float perp = abs(toPixel.x * dir.y - toPixel.y * dir.x);',
@@ -329,6 +356,32 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uSweep = gl.getUniformLocation(prog, 'u_sweep');
   var uIntensity = gl.getUniformLocation(prog, 'u_intensity');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
+
+  var mouseXVal = -1.0, mouseYVal = -1.0;
+
+  canvas.addEventListener('mousemove', function(e) {
+    mouseXVal = e.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - e.clientY) * dpr;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseXVal = -1.0; mouseYVal = -1.0;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() {
+    mouseXVal = -1.0; mouseYVal = -1.0;
+  });
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
   var needsResize = true;
@@ -354,6 +407,7 @@
     gl.uniform1f(uTime, t);
     gl.uniform1f(uSweep, SWEEP_SPEED);
     gl.uniform1f(uIntensity, BEAM_INTENSITY);
+    gl.uniform2f(uMouse, mouseXVal, mouseYVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }

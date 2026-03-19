@@ -51,6 +51,7 @@
     'uniform vec2 u_res;',
     'uniform float u_flareSpread;',
     'uniform float u_driftSpeed;',
+    'uniform vec2 u_mouse;',
     '',
     '#define PI 3.14159265359',
     '#define NUM_LIGHTS 6',
@@ -201,6 +202,14 @@
     '  float aspect = u_res.x / u_res.y;',
     '  float t = u_time * u_driftSpeed;',
     '',
+    '  // ── Mouse: shift lens center ──',
+    '  vec2 mouseShift = vec2(0.0);',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mUV = (u_mouse - u_res * 0.5) / min(u_res.x, u_res.y);',
+    '    mouseShift = mUV * 0.5;',
+    '  }',
+    '  uv -= mouseShift;',
+    '',
     '  // ── Layer 1: Pure black background ──',
     '  vec3 col = vec3(0.0);',
     '',
@@ -290,6 +299,32 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uFlareSpread = gl.getUniformLocation(prog, 'u_flareSpread');
   var uDriftSpeed = gl.getUniformLocation(prog, 'u_driftSpeed');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
+
+  var mouseXVal = -1.0, mouseYVal = -1.0;
+
+  canvas.addEventListener('mousemove', function(e) {
+    mouseXVal = e.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - e.clientY) * dpr;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseXVal = -1.0; mouseYVal = -1.0;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() {
+    mouseXVal = -1.0; mouseYVal = -1.0;
+  });
 
   var flareSpreadVal = 1.0;
   var driftSpeedVal = 0.5;
@@ -317,6 +352,7 @@
       gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
       gl.uniform1f(uFlareSpread, flareSpreadVal);
       gl.uniform1f(uDriftSpeed, driftSpeedVal);
+      gl.uniform2f(uMouse, mouseXVal, mouseYVal);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     }
     requestAnimationFrame(render);

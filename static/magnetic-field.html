@@ -51,6 +51,7 @@
     'uniform vec2 u_res;',
     'uniform float u_waveSpeed;',
     'uniform float u_lineCount;',
+    'uniform vec2 u_mouse;',
     '',
     '#define S smoothstep',
     '#define PI 3.14159265',
@@ -127,6 +128,12 @@
     '  vec2 center = (pole1 + pole2) * 0.5;',
     '  vec2 axis = normalize(pole2 - pole1);',
     '',
+    '  // ── Mouse field source ──',
+    '  vec2 mousePole = vec2(-10.0);',
+    '  if (u_mouse.x > 0.0) {',
+    '    mousePole = (u_mouse - 0.5 * u_res.xy) / u_res.y;',
+    '  }',
+    '',
     '  // Transform uv into dipole-local coords (axis-aligned)',
     '  vec2 lp = uv - center;',
     '  lp = vec2(dot(lp, axis), dot(lp, vec2(-axis.y, axis.x)));',
@@ -144,6 +151,18 @@
     '  float glow2 = fieldLineGlow(vec2(lp.x, -lp.y), numLines, t);',
     '  float glow = max(glow1, glow2);',
     '',
+    '  // ── Mouse field source: additional dipole at cursor ──',
+    '  if (mousePole.x > -5.0) {',
+    '    vec2 mCenter = (mousePole + center) * 0.5;',
+    '    vec2 mAxis = normalize(mousePole - center + vec2(0.001));',
+    '    vec2 mlp = uv - mCenter;',
+    '    mlp = vec2(dot(mlp, mAxis), dot(mlp, vec2(-mAxis.y, mAxis.x)));',
+    '    mlp += vec2(n, n * 0.5);',
+    '    float mGlow1 = fieldLineGlow(mlp, numLines * 0.6, t * 1.2);',
+    '    float mGlow2 = fieldLineGlow(vec2(mlp.x, -mlp.y), numLines * 0.6, t * 1.2);',
+    '    glow = max(glow, max(mGlow1, mGlow2) * 0.8);',
+    '  }',
+    '',
     '  // Color: warm amber gradient based on position',
     '  float r = length(uv);',
     '  float angle = atan(lp.y, lp.x) / PI;',
@@ -158,7 +177,12 @@
     '  // Subtle glow at poles',
     '  float g1 = 0.006 / (length(uv - pole1) + 0.01);',
     '  float g2 = 0.006 / (length(uv - pole2) + 0.01);',
-    '  col += vec3(0.9, 0.6, 0.3) * (g1 + g2) * 0.12;',
+    '  // Mouse pole glow',
+    '  float g3 = 0.0;',
+    '  if (mousePole.x > -5.0) {',
+    '    g3 = 0.008 / (length(uv - mousePole) + 0.01);',
+    '  }',
+    '  col += vec3(0.9, 0.6, 0.3) * (g1 + g2 + g3) * 0.12;',
     '',
     '  // ── Vignette ──',
     '  float vig = 1.0 - dot(uv, uv) * 0.4;',
@@ -198,6 +222,32 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uWaveSpeed = gl.getUniformLocation(prog, 'u_waveSpeed');
   var uLineCount = gl.getUniformLocation(prog, 'u_lineCount');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
+
+  var mouseXVal = -1.0, mouseYVal = -1.0;
+
+  canvas.addEventListener('mousemove', function(e) {
+    mouseXVal = e.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - e.clientY) * dpr;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseXVal = -1.0; mouseYVal = -1.0;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() {
+    mouseXVal = -1.0; mouseYVal = -1.0;
+  });
 
   var waveSpeedVal = 1.0;
   var lineCountVal = 8.0;
@@ -224,6 +274,7 @@
     gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
     gl.uniform1f(uWaveSpeed, waveSpeedVal);
     gl.uniform1f(uLineCount, lineCountVal);
+    gl.uniform2f(uMouse, mouseXVal, mouseYVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }

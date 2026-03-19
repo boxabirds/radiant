@@ -52,6 +52,7 @@
     'uniform vec2 u_res;',
     'uniform float u_rotationSpeed;',
     'uniform float u_complexity;',
+    'uniform vec2 u_mouse;',
     '',
     '#define PI 3.14159265359',
     '#define TAU 6.28318530718',
@@ -222,6 +223,10 @@
     '',
     'void main() {',
     '  vec2 uv = (gl_FragCoord.xy - u_res * 0.5) / min(u_res.x, u_res.y);',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mNorm = (u_mouse - u_res * 0.5) / min(u_res.x, u_res.y);',
+    '    uv += (mNorm - uv) * 0.2;',
+    '  }',
     '  float t = u_time;',
     '  float complexity = u_complexity;',
     '  ',
@@ -345,7 +350,9 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uRotationSpeed = gl.getUniformLocation(prog, 'u_rotationSpeed');
   var uComplexity = gl.getUniformLocation(prog, 'u_complexity');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
 
+  var mouseXVal = -1.0, mouseYVal = -1.0;
   var rotationSpeedVal = 0.3;
   var complexityVal = 5.0;
 
@@ -369,6 +376,7 @@
     gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
     gl.uniform1f(uRotationSpeed, rotationSpeedVal);
     gl.uniform1f(uComplexity, complexityVal);
+    gl.uniform2f(uMouse, mouseXVal, mouseYVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }
@@ -380,6 +388,29 @@
   resize();
 
   requestAnimationFrame(render);
+
+  canvas.addEventListener('mousemove', function(e) {
+    mouseXVal = e.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - e.clientY) * dpr;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseXVal = -1.0; mouseYVal = -1.0;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, {passive: false});
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, {passive: false});
+  canvas.addEventListener('touchend', function() {
+    mouseXVal = -1.0; mouseYVal = -1.0;
+  });
 
   window.addEventListener('message', function(e) {
     if (e.data && e.data.type === 'param') {

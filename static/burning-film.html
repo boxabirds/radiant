@@ -49,6 +49,7 @@
     'uniform vec2 u_res;',
     'uniform float u_burnSpeed;',
     'uniform float u_emberGlow;',
+    'uniform vec2 u_mouse;',
     '',
     '// ── Hash functions ──',
     'float hash21(vec2 p) {',
@@ -161,7 +162,13 @@
     '  // ── Compute burn pattern (domain-warped noise) ──',
     '  // Use aspect-corrected coordinates for the noise',
     '  float aspect = u_res.x / u_res.y;',
-    '  vec2 noiseUV = uv * vec2(aspect, 1.0) * 2.5;',
+    '  // Shift burn origin toward mouse position',
+    '  vec2 burnUV = uv;',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mouseNorm = u_mouse / u_res;',
+    '    burnUV += (mouseNorm - vec2(0.5)) * 0.4;',
+    '  }',
+    '  vec2 noiseUV = burnUV * vec2(aspect, 1.0) * 2.5;',
     '',
     '  // Slow evolution offset per cycle so pattern differs',
     '  float cycleIndex = floor(t / cycleDuration);',
@@ -350,9 +357,34 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uBurnSpeed = gl.getUniformLocation(prog, 'u_burnSpeed');
   var uEmberGlow = gl.getUniformLocation(prog, 'u_emberGlow');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
 
   var burnSpeedVal = 0.5;
   var emberGlowVal = 1.0;
+  var mouseXVal = -1, mouseYVal = -1;
+
+  canvas.addEventListener('mousemove', function(e) {
+    mouseXVal = e.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - e.clientY) * dpr;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseXVal = -1; mouseYVal = -1;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var t = e.touches[0];
+    mouseXVal = t.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - t.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    var t = e.touches[0];
+    mouseXVal = t.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - t.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() {
+    mouseXVal = -1; mouseYVal = -1;
+  });
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
   var needsResize = true;
@@ -378,6 +410,7 @@
     gl.uniform1f(uTime, t);
     gl.uniform1f(uBurnSpeed, burnSpeedVal);
     gl.uniform1f(uEmberGlow, emberGlowVal);
+    gl.uniform2f(uMouse, mouseXVal, mouseYVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }

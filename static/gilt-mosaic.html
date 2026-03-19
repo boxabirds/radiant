@@ -55,6 +55,7 @@
     'uniform float u_waveSpeed;',
     'uniform float u_waveDelay;',
     'uniform float u_waveDir;',
+    'uniform vec2 u_mouse;',
     '',
     '#define PI 3.14159265359',
     '#define TAU 6.28318530718',
@@ -166,6 +167,10 @@
     '  vec2 uv = gl_FragCoord.xy / u_res;',
     '  vec2 aspect = vec2(u_res.x / u_res.y, 1.0);',
     '  vec2 p = uv * aspect;',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mNorm = u_mouse / u_res * aspect;',
+    '    p += (mNorm - p) * 0.15;',
+    '  }',
     '  float t = u_time * u_lightSpeed;',
     '',
     '  // ── Tile grid ──',
@@ -423,7 +428,9 @@
   var uWaveSpeed = gl.getUniformLocation(prog, 'u_waveSpeed');
   var uWaveDelay = gl.getUniformLocation(prog, 'u_waveDelay');
   var uWaveDir = gl.getUniformLocation(prog, 'u_waveDir');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
 
+  var mouseXVal = -1.0, mouseYVal = -1.0;
   var lightSpeedVal = 0.4;
   var tileScaleVal = 1.0;
   var animModeVal = 1.0;
@@ -455,6 +462,7 @@
     gl.uniform1f(uWaveSpeed, waveSpeedVal);
     gl.uniform1f(uWaveDelay, waveDelayVal);
     gl.uniform1f(uWaveDir, waveDirVal);
+    gl.uniform2f(uMouse, mouseXVal, mouseYVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }
@@ -466,6 +474,29 @@
   resize();
 
   requestAnimationFrame(render);
+
+  canvas.addEventListener('mousemove', function(e) {
+    mouseXVal = e.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - e.clientY) * dpr;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseXVal = -1.0; mouseYVal = -1.0;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, {passive: false});
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, {passive: false});
+  canvas.addEventListener('touchend', function() {
+    mouseXVal = -1.0; mouseYVal = -1.0;
+  });
 
   document.addEventListener('visibilitychange', function() {
     if (!document.hidden) {

@@ -54,6 +54,7 @@
     'uniform vec2 u_res;',
     'uniform float u_waveSpeed;',
     'uniform float u_sparkle;',
+    'uniform vec2 u_mouse;',
     '',
     '#define PI 3.14159265359',
     '#define TAU 6.28318530718',
@@ -203,9 +204,28 @@
     '  float waveV = waveField(worldPos + vec2(0.0, 0.01), t);',
     '  float tiltDir = atan(waveV - wave, waveH - wave);',
     '',
+    '  // ── Mouse light source: extra specular from cursor ──',
+    '  float mouseSpec = 0.0;',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mUV = (u_mouse - u_res * 0.5) / min(u_res.x, u_res.y);',
+    '    float mDist = length(worldPos - mUV);',
+    '    float mInfluence = exp(-mDist * mDist * 6.0);',
+    '    // Light from mouse position',
+    '    vec3 mLightDir = normalize(vec3(mUV.x - worldPos.x, mUV.y - worldPos.y, 0.5));',
+    '    float ct = cos(tiltAngle);',
+    '    float st2 = sin(tiltAngle);',
+    '    float cd = cos(tiltDir);',
+    '    float sd = sin(tiltDir);',
+    '    vec3 mN = vec3(st2 * cd, st2 * sd, ct);',
+    '    vec3 mR = reflect(-mLightDir, mN);',
+    '    float mS = pow(max(dot(mR, vec3(0.0, 0.0, 1.0)), 0.0), 32.0);',
+    '    mouseSpec = mS * mInfluence * 1.5;',
+    '  }',
+    '',
     '  // ── Specular flash ──',
     '  float spec = sequinSpecular(tiltAngle, tiltDir, uv);',
     '  spec *= reflVar * u_sparkle;',
+    '  spec += mouseSpec * reflVar;',
     '',
     '  // ── Color composition ──',
     '  // Dark base: sequin that is tilted away from light',
@@ -301,6 +321,32 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uWaveSpeed = gl.getUniformLocation(prog, 'u_waveSpeed');
   var uSparkle = gl.getUniformLocation(prog, 'u_sparkle');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
+
+  var mouseXVal = -1.0, mouseYVal = -1.0;
+
+  canvas.addEventListener('mousemove', function(e) {
+    mouseXVal = e.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - e.clientY) * dpr;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseXVal = -1.0; mouseYVal = -1.0;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() {
+    mouseXVal = -1.0; mouseYVal = -1.0;
+  });
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
   var needsResize = true;
@@ -335,6 +381,7 @@
     gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
     gl.uniform1f(uWaveSpeed, WAVE_SPEED);
     gl.uniform1f(uSparkle, SPARKLE_INTENSITY);
+    gl.uniform2f(uMouse, mouseXVal, mouseYVal);
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);

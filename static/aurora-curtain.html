@@ -51,6 +51,7 @@
     'uniform vec2 u_res;',
     'uniform float u_waveSpeed;',
     'uniform float u_lineCount;',
+    'uniform vec2 u_mouse;',
     '',
     '// ── Hash for noise ──',
     'float hash(vec2 p) {',
@@ -84,6 +85,10 @@
     '',
     'void main() {',
     '  vec2 uv = (gl_FragCoord.xy - 0.5 * u_res.xy) / u_res.y;',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mNorm = (u_mouse - 0.5 * u_res) / u_res.y;',
+    '    uv.x += (mNorm.x - uv.x) * 0.3;',
+    '  }',
     '  float t = u_time * u_waveSpeed;',
     '  int lineCount = int(u_lineCount);',
     '',
@@ -154,7 +159,9 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uWaveSpeed = gl.getUniformLocation(prog, 'u_waveSpeed');
   var uLineCount = gl.getUniformLocation(prog, 'u_lineCount');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
 
+  var mouseXVal = -1.0, mouseYVal = -1.0;
   var waveSpeedVal = 1.0;
   var lineCountVal = 6.0;
 
@@ -180,6 +187,7 @@
     gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
     gl.uniform1f(uWaveSpeed, waveSpeedVal);
     gl.uniform1f(uLineCount, lineCountVal);
+    gl.uniform2f(uMouse, mouseXVal, mouseYVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }
@@ -191,6 +199,29 @@
   resize();
 
   requestAnimationFrame(render);
+
+  canvas.addEventListener('mousemove', function(e) {
+    mouseXVal = e.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - e.clientY) * dpr;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseXVal = -1.0; mouseYVal = -1.0;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, {passive: false});
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, {passive: false});
+  canvas.addEventListener('touchend', function() {
+    mouseXVal = -1.0; mouseYVal = -1.0;
+  });
 
   document.addEventListener('visibilitychange', function () {
     running = !document.hidden;

@@ -50,6 +50,7 @@
     'uniform vec2 u_res;',
     'uniform float u_flowSpeed;',
     'uniform float u_foldDepth;',
+    'uniform vec2 u_mouse;',
     '',
     '// --- Simplex noise ---',
     'vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }',
@@ -141,7 +142,12 @@
     'void main() {',
     '  vec2 uv = gl_FragCoord.xy / u_res;',
     '  float aspect = u_res.x / u_res.y;',
-    '  vec2 p = vec2((uv.x - 0.5) * aspect, uv.y - 0.5) * 3.2;',
+    '  vec2 center = vec2(0.5);',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mUV = u_mouse / u_res;',
+    '    center = mix(vec2(0.5), mUV, 0.3);',
+    '  }',
+    '  vec2 p = vec2((uv.x - center.x) * aspect, uv.y - center.y) * 3.2;',
     '',
     '  float t = u_time * u_flowSpeed;',
     '',
@@ -286,8 +292,33 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uFlowSpeed = gl.getUniformLocation(prog, 'u_flowSpeed');
   var uFoldDepth = gl.getUniformLocation(prog, 'u_foldDepth');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
   var flowSpeedVal = 0.8;
   var foldDepthVal = 1.0;
+
+  var mouseXVal = -1, mouseYVal = -1;
+  canvas.addEventListener('mousemove', function(e) {
+    mouseXVal = e.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - e.clientY) * dpr;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseXVal = -1; mouseYVal = -1;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() {
+    mouseXVal = -1; mouseYVal = -1;
+  });
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
   var needsResize = true;
@@ -309,6 +340,7 @@
     gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
     gl.uniform1f(uFlowSpeed, flowSpeedVal);
     gl.uniform1f(uFoldDepth, foldDepthVal);
+    gl.uniform2f(uMouse, mouseXVal, mouseYVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }

@@ -1068,6 +1068,80 @@
     gl.drawArrays(gl.TRIANGLES, 0, 6);
   }
 
+  // ── Click/touch to create splash at cursor position ──
+  function createSplash(clientX, clientY) {
+    var rect = canvas.getBoundingClientRect();
+    var x = (clientX - rect.left) / rect.width * (rdWidth / rdScale);
+    var y = (clientY - rect.top) / rect.height * (rdHeight / rdScale);
+
+    // Compute radial angle from center for the splash drop
+    var centerX = (rdWidth / rdScale) / 2;
+    var centerY = (rdHeight / rdScale) / 2;
+    var dx = x - centerX;
+    var dy = y - centerY;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    var angle = dist > 0.5 ? Math.atan2(dy, dx) : Math.random() * Math.PI * 2;
+
+    // Create a large impact drop at click position
+    var mainDrop = rdCreateDrop({
+      x: x,
+      y: y,
+      r: random(options.minR * 1.5, options.maxR),
+      angle: angle,
+      momentum: 1 + random(3),
+      warpX: 0.8 + Math.random() * 0.4,
+      warpY: 0.85 + Math.random() * 0.35,
+      spreadX: 2.0,
+      spreadY: 2.0
+    });
+    if (mainDrop) drops.push(mainDrop);
+
+    // Scatter smaller satellite droplets around the impact
+    for (var i = 0; i < 8; i++) {
+      var sAngle = Math.random() * Math.PI * 2;
+      var sDist = 8 + Math.random() * 20;
+      var sx = x + Math.cos(sAngle) * sDist;
+      var sy = y + Math.sin(sAngle) * sDist;
+      var sdx = sx - centerX;
+      var sdy = sy - centerY;
+      var sDistC = Math.sqrt(sdx * sdx + sdy * sdy);
+      var sRadAngle = sDistC > 0.5 ? Math.atan2(sdy, sdx) : Math.random() * Math.PI * 2;
+      var sr = random(options.minR * 0.5, options.minR * 1.2);
+      var sd = rdCreateDrop({
+        x: sx,
+        y: sy,
+        r: sr,
+        angle: sRadAngle,
+        momentum: 0.5 + Math.random() * 1.5,
+        warpX: 0.8 + Math.random() * 0.4,
+        warpY: 0.85 + Math.random() * 0.35,
+        spreadX: 1.0,
+        spreadY: 1.0
+      });
+      if (sd) drops.push(sd);
+    }
+
+    // Draw micro-droplets in the splash area
+    for (var j = 0; j < 20; j++) {
+      var sa = Math.random() * Math.PI * 2;
+      var sd2 = 5 + Math.random() * 20;
+      drawDroplet(
+        x + Math.cos(sa) * sd2,
+        y + Math.sin(sa) * sd2,
+        random(options.dropletsSize[0], options.dropletsSize[1])
+      );
+    }
+  }
+
+  canvas.addEventListener('click', function(e) {
+    createSplash(e.clientX, e.clientY);
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var t = e.touches[0];
+    createSplash(t.clientX, t.clientY);
+  }, { passive: false });
+
   requestAnimationFrame(render);
 })();
 </script>

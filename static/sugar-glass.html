@@ -52,6 +52,7 @@
     'uniform vec2 u_res;',
     'uniform float u_crackSpeed;',
     'uniform float u_lightBleed;',
+    'uniform vec2 u_mouse;',
     '',
     '// Hash functions for procedural Voronoi',
     'vec2 hash2(vec2 p) {',
@@ -182,7 +183,12 @@
     '',
     'void main() {',
     '  vec2 uv = gl_FragCoord.xy / u_res;',
-    '  vec2 p = (gl_FragCoord.xy - u_res * 0.5) / min(u_res.x, u_res.y);',
+    '  vec2 centerShift = vec2(0.0);',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mUV = u_mouse / u_res;',
+    '    centerShift = (mUV - 0.5) * 0.3;',
+    '  }',
+    '  vec2 p = (gl_FragCoord.xy - u_res * (0.5 + centerShift)) / min(u_res.x, u_res.y);',
     '',
     '  float t = u_time * u_crackSpeed;',
     '',
@@ -307,8 +313,32 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uCrackSpeed = gl.getUniformLocation(prog, 'u_crackSpeed');
   var uLightBleed = gl.getUniformLocation(prog, 'u_lightBleed');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
 
+  var mouseXVal = -1, mouseYVal = -1;
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.addEventListener('mousemove', function(e) {
+    mouseXVal = e.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - e.clientY) * dpr;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseXVal = -1; mouseYVal = -1;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() {
+    mouseXVal = -1; mouseYVal = -1;
+  });
   var needsResize = true;
 
   function resize() {
@@ -329,6 +359,7 @@
     gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
     gl.uniform1f(uCrackSpeed, CRACK_SPEED);
     gl.uniform1f(uLightBleed, LIGHT_BLEED);
+    gl.uniform2f(uMouse, mouseXVal, mouseYVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }

@@ -49,6 +49,7 @@
     'uniform vec2 u_res;',
     'uniform float u_flashRate;',
     'uniform float u_glowIntensity;',
+    'uniform vec2 u_mouse;',
     '',
     '#define PI 3.141592653589793',
     '#define TAU 6.283185307179586',
@@ -254,7 +255,12 @@
     '  float aspect = u_res.x / u_res.y;',
     '',
     '  // Aspect-corrected centered coordinates',
-    '  vec2 p = (uv - 0.5) * vec2(aspect, 1.0);',
+    '  vec2 center = vec2(0.5);',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mUV = u_mouse / u_res;',
+    '    center = mix(vec2(0.5), mUV, 0.25);',
+    '  }',
+    '  vec2 p = (uv - center) * vec2(aspect, 1.0);',
     '',
     '  float t = u_time;',
     '  float flashInterval = u_flashRate;',
@@ -451,9 +457,34 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uFlashRate = gl.getUniformLocation(prog, 'u_flashRate');
   var uGlowIntensity = gl.getUniformLocation(prog, 'u_glowIntensity');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
 
   var flashRateVal = 0.7;
   var glowIntensityVal = 1.0;
+
+  var mouseXVal = -1, mouseYVal = -1;
+  canvas.addEventListener('mousemove', function(e) {
+    mouseXVal = e.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - e.clientY) * dpr;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseXVal = -1; mouseYVal = -1;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() {
+    mouseXVal = -1; mouseYVal = -1;
+  });
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
   var needsResize = true;
@@ -479,6 +510,7 @@
     gl.uniform1f(uTime, t);
     gl.uniform1f(uFlashRate, flashRateVal);
     gl.uniform1f(uGlowIntensity, glowIntensityVal);
+    gl.uniform2f(uMouse, mouseXVal, mouseYVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }

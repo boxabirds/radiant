@@ -316,6 +316,30 @@
   var dpr = 1;
   var needsResize = true;
   var running = true;
+  var mouseXVal = -1, mouseYVal = -1;
+
+  canvas.addEventListener('mousemove', function(e) {
+    mouseXVal = e.clientX / canvas.clientWidth;
+    mouseYVal = 1.0 - e.clientY / canvas.clientHeight;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseXVal = -1; mouseYVal = -1;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var t = e.touches[0];
+    mouseXVal = t.clientX / canvas.clientWidth;
+    mouseYVal = 1.0 - t.clientY / canvas.clientHeight;
+  }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    var t = e.touches[0];
+    mouseXVal = t.clientX / canvas.clientWidth;
+    mouseYVal = 1.0 - t.clientY / canvas.clientHeight;
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() {
+    mouseXVal = -1; mouseYVal = -1;
+  });
 
   function resize() {
     needsResize = false;
@@ -336,8 +360,15 @@
     gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
     gl.uniform1f(uFilmThickness, filmThicknessVal);
     gl.uniform1f(uFlowSpeed, flowSpeedVal);
-    gl.uniform2f(uCenter, centerX, centerY);
-    gl.uniform1f(uScale, scaleVal);
+    // Mouse shifts the iridescence center
+    var cx = centerX, cy = centerY, sc = scaleVal;
+    if (mouseXVal >= 0) {
+      cx = mouseXVal;
+      cy = mouseYVal;
+      sc = 1.0;
+    }
+    gl.uniform2f(uCenter, cx, cy);
+    gl.uniform1f(uScale, sc);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }

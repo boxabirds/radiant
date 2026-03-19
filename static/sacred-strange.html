@@ -53,6 +53,7 @@
     'uniform float u_rotationSpeed;',
     'uniform float u_complexity;',
     'uniform float u_pattern;',
+    'uniform vec2 u_mouse;',
     '',
     '#define PI 3.14159265359',
     '#define TAU 6.28318530718',
@@ -255,7 +256,13 @@
     '// ════════════════════════════════════════════════════════════',
     '',
     'void main() {',
-    '  vec2 uv = (gl_FragCoord.xy - u_res * 0.5) / min(u_res.x, u_res.y);',
+    '  // ── Mouse: shift pattern center ──',
+    '  vec2 mouseShift = vec2(0.0);',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mUV = (u_mouse - u_res * 0.5) / min(u_res.x, u_res.y);',
+    '    mouseShift = mUV * 0.3;',
+    '  }',
+    '  vec2 uv = (gl_FragCoord.xy - u_res * 0.5) / min(u_res.x, u_res.y) - mouseShift;',
     '  float t = u_time;',
     '  float rotSpeed = u_rotationSpeed;',
     '  float complexity = u_complexity;',
@@ -491,6 +498,32 @@
   var uRotationSpeed = gl.getUniformLocation(prog, 'u_rotationSpeed');
   var uComplexity = gl.getUniformLocation(prog, 'u_complexity');
   var uPattern = gl.getUniformLocation(prog, 'u_pattern');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
+
+  var mouseXVal = -1.0, mouseYVal = -1.0;
+
+  canvas.addEventListener('mousemove', function(e) {
+    mouseXVal = e.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - e.clientY) * dpr;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseXVal = -1.0; mouseYVal = -1.0;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() {
+    mouseXVal = -1.0; mouseYVal = -1.0;
+  });
 
   var rotationSpeedVal = 0.3;
   var complexityVal = 1.0;
@@ -522,6 +555,7 @@
     gl.uniform1f(uRotationSpeed, rotationSpeedVal);
     gl.uniform1f(uComplexity, complexityVal);
     gl.uniform1f(uPattern, patternVal);
+    gl.uniform2f(uMouse, mouseXVal, mouseYVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }

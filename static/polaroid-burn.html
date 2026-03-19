@@ -42,6 +42,7 @@
     'uniform vec2 u_res;',
     'uniform float u_burnSpeed;',
     'uniform float u_photoCount;',
+    'uniform vec2 u_mouse;',
     '',
     '// --- Hash / noise utilities ---',
     'float hash(float n){ return fract(sin(n)*43758.5453123); }',
@@ -249,7 +250,13 @@
     'void main(){',
     '  vec2 uv = gl_FragCoord.xy / u_res;',
     '  vec2 aspect = vec2(u_res.x / u_res.y, 1.0);',
-    '  vec2 p = (uv - 0.5) * aspect;',
+    '  // ── Mouse: shift burn center ──',
+    '  vec2 burnShift = vec2(0.0);',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mNorm = u_mouse / u_res;',
+    '    burnShift = (mNorm - 0.5) * 0.4;',
+    '  }',
+    '  vec2 p = (uv - 0.5 - burnShift) * aspect;',
     '  float t = u_time;',
     '  float px = 1.0 / min(u_res.x, u_res.y);',
     '',
@@ -321,6 +328,33 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uBurnSpeed = gl.getUniformLocation(prog, 'u_burnSpeed');
   var uPhotoCount = gl.getUniformLocation(prog, 'u_photoCount');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
+
+  var mouseXVal = -1.0, mouseYVal = -1.0;
+
+  canvas.addEventListener('mousemove', function(e) {
+    mouseXVal = e.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - e.clientY) * dpr;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseXVal = -1.0; mouseYVal = -1.0;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() {
+    mouseXVal = -1.0; mouseYVal = -1.0;
+  });
+
   var burnSpeedVal = 0.6;
   var photoCountVal = 5.0;
 
@@ -347,6 +381,7 @@
     gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
     gl.uniform1f(uBurnSpeed, burnSpeedVal);
     gl.uniform1f(uPhotoCount, photoCountVal);
+    gl.uniform2f(uMouse, mouseXVal, mouseYVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     rafId = requestAnimationFrame(render);
   }

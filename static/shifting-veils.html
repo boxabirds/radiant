@@ -52,6 +52,7 @@
     'uniform vec2 u_res;',
     'uniform float u_layerSpeed;',
     'uniform float u_layerCount;',
+    'uniform vec2 u_mouse;',
     '',
     '#define PI 3.14159265359',
     '#define TAU 6.28318530718',
@@ -115,6 +116,13 @@
     '  vec2 p = uv * aspect;',
     '  float t = u_time * u_layerSpeed;',
     '',
+    '  // Mouse-driven veil shift',
+    '  vec2 mouseShift = vec2(0.0);',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mUV = u_mouse / u_res;',
+    '    mouseShift = (mUV - 0.5) * aspect * 0.3;',
+    '  }',
+    '',
     '  // ── Warm amber palette colors per layer ──',
     '  // From deepest (darkest) to frontmost (brightest)',
     '  // Layer 0: deep sepia',
@@ -152,7 +160,7 @@
     '    );',
     '',
     '    // Rotate coordinates slightly per layer for variety',
-    '    vec2 lp = (p - 0.5 * aspect) * rot2(fi * 0.4 + t * 0.02 * (fi - 2.5)) + 0.5 * aspect;',
+    '    vec2 lp = (p - 0.5 * aspect + mouseShift * (0.5 + layerFrac * 0.5)) * rot2(fi * 0.4 + t * 0.02 * (fi - 2.5)) + 0.5 * aspect;',
     '    lp = lp * scale + drift;',
     '',
     '    // ── Domain-warped noise for flowing veil shape ──',
@@ -266,9 +274,34 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uLayerSpeed = gl.getUniformLocation(prog, 'u_layerSpeed');
   var uLayerCount = gl.getUniformLocation(prog, 'u_layerCount');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
 
   var layerSpeedVal = 0.5;
   var layerCountVal = 5.0;
+
+  var mouseXVal = -1, mouseYVal = -1;
+  canvas.addEventListener('mousemove', function(e) {
+    mouseXVal = e.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - e.clientY) * dpr;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseXVal = -1; mouseYVal = -1;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() {
+    mouseXVal = -1; mouseYVal = -1;
+  });
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2) * pixelScale;
   var needsResize = true;
@@ -290,6 +323,7 @@
     gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
     gl.uniform1f(uLayerSpeed, layerSpeedVal);
     gl.uniform1f(uLayerCount, layerCountVal);
+    gl.uniform2f(uMouse, mouseXVal, mouseYVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }

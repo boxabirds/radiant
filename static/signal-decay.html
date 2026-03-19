@@ -49,6 +49,7 @@
     'uniform vec2 u_res;',
     'uniform float u_signalSpeed;',
     'uniform float u_decayIntensity;',
+    'uniform vec2 u_mouse;',
     '',
     '#define PI 3.14159265',
     '#define TAU 6.28318530',
@@ -188,6 +189,13 @@
     '  float ar = u_res.x / u_res.y;',
     '  float t = u_time;',
     '',
+    '  // Mouse-driven signal source shift',
+    '  vec2 mouseShift = vec2(0.0);',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mUV = u_mouse / u_res;',
+    '    mouseShift = (mUV - 0.5) * 0.4;',
+    '  }',
+    '',
     '  // yNorm: 0 at top of screen, 1 at bottom',
     '  float yNorm = 1.0 - uv.y;',
     '  float decay = clamp(pow(yNorm, 0.75) * u_decayIntensity, 0.0, 1.0);',
@@ -218,15 +226,15 @@
     '    // Frequency/phase offset per track (variety)',
     '    float tOff = fi * 0.391;',
     '',
-    '    // Horizontal position with glitch',
-    '    float x = (uv.x + gOff) * ar + tOff;',
+    '    // Horizontal position with glitch and mouse shift',
+    '    float x = (uv.x + gOff + mouseShift.x) * ar + tOff;',
     '',
     '    // Compute degraded composite waveform for this track',
     '    float wave = compositeWave(x, t + fi * 0.17, tDecay);',
     '',
     '    // Map waveform to vertical position',
     '    float ampScale = trackH * 0.38 * (1.0 + tDecay * 0.6);',
-    '    float waveY = trackCenter + wave * ampScale;',
+    '    float waveY = trackCenter + wave * ampScale + mouseShift.y * 0.1;',
     '',
     '    // SDF distance from pixel to waveform line',
     '    float dist = uv.y - waveY;',
@@ -354,9 +362,34 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uSignalSpeed = gl.getUniformLocation(prog, 'u_signalSpeed');
   var uDecayIntensity = gl.getUniformLocation(prog, 'u_decayIntensity');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
 
   var signalSpeedVal = 0.5;
   var decayIntensityVal = 1.0;
+
+  var mouseXVal = -1, mouseYVal = -1;
+  canvas.addEventListener('mousemove', function(e) {
+    mouseXVal = e.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - e.clientY) * dpr;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseXVal = -1; mouseYVal = -1;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() {
+    mouseXVal = -1; mouseYVal = -1;
+  });
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
   var needsResize = true;
@@ -381,6 +414,7 @@
     gl.uniform1f(uTime, t);
     gl.uniform1f(uSignalSpeed, signalSpeedVal);
     gl.uniform1f(uDecayIntensity, decayIntensityVal);
+    gl.uniform2f(uMouse, mouseXVal, mouseYVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }

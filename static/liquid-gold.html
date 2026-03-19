@@ -51,6 +51,7 @@
     'uniform vec2 u_res;',
     'uniform float u_flowSpeed;',
     'uniform float u_viscosity;',
+    'uniform vec2 u_mouse;',
     '',
     '#define PI 3.14159265359',
     '',
@@ -149,15 +150,24 @@
     '  float t = u_time * u_flowSpeed;',
     '  float visc = u_viscosity;',
     '  ',
+    '  // ── Mouse disturbance ──',
+    '  vec2 mouseDisturbance = vec2(0.0);',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mUV = (u_mouse - u_res * 0.5) / min(u_res.x, u_res.y);',
+    '    float mDist = length(uv - mUV);',
+    '    float mForce = exp(-mDist * mDist * 8.0) * 0.3;',
+    '    mouseDisturbance = normalize(uv - mUV + 0.001) * mForce;',
+    '  }',
+    '',
     '  // ── Compute the height field (domain-warped + metaballs) ──',
-    '  float field = warpedField(uv * 2.0, t, visc);',
-    '  float meta = metaballs(uv, t);',
+    '  float field = warpedField(uv * 2.0 + mouseDisturbance * 4.0, t, visc);',
+    '  float meta = metaballs(uv + mouseDisturbance, t);',
     '  ',
     '  // Surface height — combines warped noise and metaball bulges',
     '  float height = field + meta * 0.08;',
     '  ',
     '  // ── Surface normal for lighting ──',
-    '  vec3 normal = getNormal(uv * 2.0, t, visc, field);',
+    '  vec3 normal = getNormal(uv * 2.0 + mouseDisturbance * 4.0, t, visc, field);',
     '  ',
     '  // ── View and light setup ──',
     '  vec3 viewDir = normalize(vec3(0.0, 0.0, 1.0));',
@@ -289,6 +299,32 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uFlowSpeed = gl.getUniformLocation(prog, 'u_flowSpeed');
   var uViscosity = gl.getUniformLocation(prog, 'u_viscosity');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
+
+  var mouseXVal = -1.0, mouseYVal = -1.0;
+
+  canvas.addEventListener('mousemove', function(e) {
+    mouseXVal = e.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - e.clientY) * dpr;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseXVal = -1.0; mouseYVal = -1.0;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() {
+    mouseXVal = -1.0; mouseYVal = -1.0;
+  });
 
   var flowSpeedVal = 0.4;
   var viscosityVal = 0.6;
@@ -313,6 +349,7 @@
     gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
     gl.uniform1f(uFlowSpeed, flowSpeedVal);
     gl.uniform1f(uViscosity, viscosityVal);
+    gl.uniform2f(uMouse, mouseXVal, mouseYVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }

@@ -55,6 +55,7 @@
     'uniform vec2 u_res;',
     'uniform float u_driftSpeed;',
     'uniform float u_shadowDensity;',
+    'uniform vec2 u_mouse;',
     '',
     '#define PI 3.14159265359',
     '',
@@ -166,7 +167,12 @@
     '}',
     '',
     'void main() {',
-    '  vec2 uv = (gl_FragCoord.xy - u_res * 0.5) / min(u_res.x, u_res.y);',
+    '  vec2 focalShift = vec2(0.0);',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mUV = u_mouse / u_res;',
+    '    focalShift = (mUV - 0.5) * 0.25;',
+    '  }',
+    '  vec2 uv = (gl_FragCoord.xy - u_res * (0.5 + focalShift)) / min(u_res.x, u_res.y);',
     '  float t = u_time;',
     '  float speed = u_driftSpeed;',
     '  float density = u_shadowDensity;',
@@ -353,8 +359,33 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uDriftSpeed = gl.getUniformLocation(prog, 'u_driftSpeed');
   var uShadowDensity = gl.getUniformLocation(prog, 'u_shadowDensity');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
 
+  var mouseXVal = -1, mouseYVal = -1;
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.addEventListener('mousemove', function(e) {
+    mouseXVal = e.clientX * dpr / pixelScale;
+    mouseYVal = (canvas.clientHeight - e.clientY) * dpr / pixelScale;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseXVal = -1; mouseYVal = -1;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr / pixelScale;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr / pixelScale;
+  }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr / pixelScale;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr / pixelScale;
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() {
+    mouseXVal = -1; mouseYVal = -1;
+  });
+
   var needsResize = true;
 
   function resize() {
@@ -378,6 +409,7 @@
     gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
     gl.uniform1f(uDriftSpeed, DRIFT_SPEED);
     gl.uniform1f(uShadowDensity, SHADOW_DENSITY);
+    gl.uniform2f(uMouse, mouseXVal, mouseYVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }

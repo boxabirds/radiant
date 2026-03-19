@@ -51,6 +51,7 @@
     'uniform vec2 u_res;',
     'uniform float u_crackSpeed;',
     'uniform float u_glowIntensity;',
+    'uniform vec2 u_mouse;',
     '',
     '#define PI 3.14159265359',
     '',
@@ -237,6 +238,10 @@
     'void main() {',
     '  vec2 fragCoord = gl_FragCoord.xy;',
     '  vec2 p = (fragCoord - u_res * 0.5) / min(u_res.x, u_res.y);',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mNorm = (u_mouse - u_res * 0.5) / min(u_res.x, u_res.y);',
+    '    p += (mNorm - p) * 0.2;',
+    '  }',
     '  float t = u_time * u_crackSpeed;',
     '',
     '  // ────────────────────────────────────────────',
@@ -434,7 +439,9 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uCrackSpeed = gl.getUniformLocation(prog, 'u_crackSpeed');
   var uGlowIntensity = gl.getUniformLocation(prog, 'u_glowIntensity');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
 
+  var mouseXVal = -1.0, mouseYVal = -1.0;
   var crackSpeedVal = 0.3;
   var glowIntensityVal = 1.0;
 
@@ -463,6 +470,7 @@
       gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
       gl.uniform1f(uCrackSpeed, crackSpeedVal);
       gl.uniform1f(uGlowIntensity, glowIntensityVal);
+      gl.uniform2f(uMouse, mouseXVal, mouseYVal);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     }
     requestAnimationFrame(render);
@@ -480,6 +488,29 @@
   document.addEventListener('visibilitychange', function() {
     paused = document.hidden;
     if (!paused) lastTime = 0;
+  });
+
+  canvas.addEventListener('mousemove', function(e) {
+    mouseXVal = e.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - e.clientY) * dpr;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseXVal = -1.0; mouseYVal = -1.0;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, {passive: false});
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, {passive: false});
+  canvas.addEventListener('touchend', function() {
+    mouseXVal = -1.0; mouseYVal = -1.0;
   });
 
   // ── PostMessage API ──

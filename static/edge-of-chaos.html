@@ -871,6 +871,36 @@
     if (!paused) lastTime = 0;
   });
 
+  // Mouse/touch interaction: click to inject perturbation
+  function handleInteraction(clientX, clientY) {
+    // Convert client coords to simulation UV (0-1)
+    var rect = canvas.getBoundingClientRect();
+    var uvX = (clientX - rect.left) / rect.width;
+    var uvY = 1.0 - (clientY - rect.top) / rect.height;
+    uvX = Math.max(0.02, Math.min(0.98, uvX));
+    uvY = Math.max(0.02, Math.min(0.98, uvY));
+    // Inject a seed spot (mode 0 = introduce v chemical)
+    applySpot(uvX, uvY, 0.06 + Math.random() * 0.06, 0.0);
+    // Also inject a couple nearby for organic spread
+    for (var i = 0; i < 2; i++) {
+      applySpot(
+        uvX + (Math.random() - 0.5) * 0.12,
+        uvY + (Math.random() - 0.5) * 0.12,
+        0.04 + Math.random() * 0.05,
+        0.0
+      );
+    }
+  }
+
+  canvas.addEventListener('click', function(e) {
+    handleInteraction(e.clientX, e.clientY);
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var t = e.touches[0];
+    handleInteraction(t.clientX, t.clientY);
+  }, { passive: false });
+
   // PostMessage param listener
   window.addEventListener('message', function(e) {
     if (e.data && e.data.type === 'param') {

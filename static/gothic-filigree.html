@@ -49,6 +49,7 @@
     'uniform vec2 u_res;',
     'uniform float u_detail;',
     'uniform float u_glow;',
+    'uniform vec2 u_mouse;',
     '',
     '#define PI 3.14159265359',
     '#define TAU 6.28318530718',
@@ -291,6 +292,10 @@
     '',
     'void main() {',
     '  vec2 uv = (gl_FragCoord.xy - u_res * 0.5) / min(u_res.x, u_res.y);',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mNorm = (u_mouse - u_res * 0.5) / min(u_res.x, u_res.y);',
+    '    uv += (mNorm - uv) * 0.2;',
+    '  }',
     '',
     '  float t = u_time;',
     '  float d = filigree(uv, t);',
@@ -367,6 +372,9 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uDetail = gl.getUniformLocation(prog, 'u_detail');
   var uGlow = gl.getUniformLocation(prog, 'u_glow');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
+
+  var mouseXVal = -1.0, mouseYVal = -1.0;
   var detailVal = _pad;
   var glowVal = 1.0;
 
@@ -394,6 +402,7 @@
     gl.uniform1f(uTime, prefersReduced ? 100.0 : elapsed);
     gl.uniform1f(uDetail, detailVal);
     gl.uniform1f(uGlow, glowVal);
+    gl.uniform2f(uMouse, mouseXVal, mouseYVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }
@@ -405,6 +414,29 @@
   resize();
 
   requestAnimationFrame(render);
+
+  canvas.addEventListener('mousemove', function(e) {
+    mouseXVal = e.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - e.clientY) * dpr;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseXVal = -1.0; mouseYVal = -1.0;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, {passive: false});
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, {passive: false});
+  canvas.addEventListener('touchend', function() {
+    mouseXVal = -1.0; mouseYVal = -1.0;
+  });
 
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden) startTime = 0;

@@ -51,6 +51,7 @@
     'uniform vec2 u_res;',
     'uniform float u_heatIntensity;',
     'uniform float u_colorVibrancy;',
+    'uniform vec2 u_mouse;',
     '',
     '// ── Hash / noise primitives ──',
     'vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }',
@@ -150,7 +151,12 @@
     '',
     'void main() {',
     '  vec2 uv = gl_FragCoord.xy / u_res;',
-    '  vec2 p = (gl_FragCoord.xy - u_res * 0.5) / min(u_res.x, u_res.y);',
+    '  vec2 heatCenter = vec2(0.5);',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mUV = u_mouse / u_res;',
+    '    heatCenter = mix(vec2(0.5), mUV, 0.3);',
+    '  }',
+    '  vec2 p = (gl_FragCoord.xy - u_res * heatCenter) / min(u_res.x, u_res.y);',
     '  float t = u_time;',
     '',
     '  // ── Heat distortion ──',
@@ -295,9 +301,34 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uHeatIntensity = gl.getUniformLocation(prog, 'u_heatIntensity');
   var uColorVibrancy = gl.getUniformLocation(prog, 'u_colorVibrancy');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
 
   var heatIntensityVal = 1.0;
   var colorVibrancyVal = 0.8;
+
+  var mouseXVal = -1, mouseYVal = -1;
+  canvas.addEventListener('mousemove', function(e) {
+    mouseXVal = e.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - e.clientY) * dpr;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseXVal = -1; mouseYVal = -1;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() {
+    mouseXVal = -1; mouseYVal = -1;
+  });
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2) * pixelScale;
   var needsResize = true;
@@ -319,6 +350,7 @@
     gl.uniform1f(uTime, prefersReduced ? 0.0 : now * 0.001);
     gl.uniform1f(uHeatIntensity, heatIntensityVal);
     gl.uniform1f(uColorVibrancy, colorVibrancyVal);
+    gl.uniform2f(uMouse, mouseXVal, mouseYVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }

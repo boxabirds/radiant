@@ -51,6 +51,7 @@
     'uniform vec2 u_res;',
     'uniform float u_strikeInterval;',
     'uniform float u_flashIntensity;',
+    'uniform vec2 u_mouse;',
     '',
     '#define PI 3.14159265359',
     '',
@@ -196,6 +197,15 @@
     '  vec2 screenUV = gl_FragCoord.xy / u_res;',
     '  float t = u_time;',
     '',
+    '  // Mouse as lightning strike target',
+    '  vec2 mouseTarget = vec2(0.0);',
+    '  float mouseActive = 0.0;',
+    '  if (u_mouse.x > 0.0) {',
+    '    vec2 mUV = u_mouse / u_res;',
+    '    mouseTarget = (mUV - 0.5) * vec2(u_res.x / u_res.y, 1.0);',
+    '    mouseActive = 1.0;',
+    '  }',
+    '',
     '  // ── Storm sky ──',
     '  vec3 skyTop = vec3(0.015, 0.008, 0.05);',
     '  vec3 skyMid = vec3(0.025, 0.018, 0.07);',
@@ -237,6 +247,10 @@
     '    float birth, seed, sx, ex;',
     '    boltParams(bi, interval, birth, seed, sx, ex);',
     '',
+    '    if (mouseActive > 0.5) {',
+    '      ex = mix(ex, mouseTarget.x, 0.6);',
+    '      sx = mix(sx, mouseTarget.x, 0.3);',
+    '    }',
     '    float age = ct - birth;',
     '    if (age < -0.01 || age > 1.5) continue;',
     '    if (age < 0.0) age = 0.0;',
@@ -407,9 +421,34 @@
   var uRes = gl.getUniformLocation(prog, 'u_res');
   var uStrikeInterval = gl.getUniformLocation(prog, 'u_strikeInterval');
   var uFlashIntensity = gl.getUniformLocation(prog, 'u_flashIntensity');
+  var uMouse = gl.getUniformLocation(prog, 'u_mouse');
 
   var strikeIntervalVal = 1.5;
   var flashIntensityVal = 1.0;
+
+  var mouseXVal = -1, mouseYVal = -1;
+  canvas.addEventListener('mousemove', function(e) {
+    mouseXVal = e.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - e.clientY) * dpr;
+  });
+  canvas.addEventListener('mouseleave', function() {
+    mouseXVal = -1; mouseYVal = -1;
+  });
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    mouseXVal = touch.clientX * dpr;
+    mouseYVal = (canvas.clientHeight - touch.clientY) * dpr;
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() {
+    mouseXVal = -1; mouseYVal = -1;
+  });
 
   var dpr = Math.min(window.devicePixelRatio || 1, 2) * pixelScale;
   var needsResize = true;
@@ -434,6 +473,7 @@
     gl.uniform1f(uTime, prefersReduced ? 0.0 : elapsed);
     gl.uniform1f(uStrikeInterval, strikeIntervalVal);
     gl.uniform1f(uFlashIntensity, flashIntensityVal);
+    gl.uniform2f(uMouse, mouseXVal, mouseYVal);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(render);
   }

@@ -7,14 +7,13 @@
  *
  * Usage:
  *   node scripts/generate-videos.mjs --shader=liquid-gold
- *   node scripts/generate-videos.mjs --shader=liquid-gold --duration=15 --format=reel
+ *   node scripts/generate-videos.mjs --shader=liquid-gold --format=reel
  *   node scripts/generate-videos.mjs --shader=liquid-gold --format=landscape
- *   node scripts/generate-videos.mjs --all --duration=15
+ *   node scripts/generate-videos.mjs --all
  *
  * Flags:
  *   --shader=id       Record a specific shader (required unless --all)
  *   --all             Record all shaders
- *   --duration=20     Total duration in seconds (default: 20)
  *   --format=reel|landscape|square  Output resolution preset (default: landscape)
  *   --fps=60          Frame rate (default: 60)
  *   --output=dir      Output directory (default: videos/)
@@ -363,44 +362,46 @@ function captionOpacity(frameInScene, sceneDurationFrames, fadeFrames = 30) {
  * Build a default choreography for a shader.
  * Returns an array of scene descriptors.
  */
-function buildChoreography(shader, durationSec, fps) {
-	const totalFrames = durationSec * fps;
-	const hasParams = shader.params && shader.params.length > 0;
+function buildChoreography(shader, fps) {
+	const paramCount = shader.params ? shader.params.length : 0;
+	const hasParams = paramCount > 0;
 
-	// Distribute time across scenes (in seconds)
-	// Adjust if no params — give more time to other scenes
-	let scenes;
+	// Duration is derived from content, not hardcoded
+	const s1 = 4;                              // Opening
+	const s2 = 4;                              // Interaction
+	const s3 = hasParams ? paramCount * 3 : 0; // Parameters: 3s per param
+	const s4 = 4;                              // Color themes
+	const s5 = 3;                              // Outro
+
+	let scenes = [
+		{ name: 'opening',     startSec: 0, durationSec: s1 }
+	];
+
+	let t = s1;
+	scenes.push({ name: 'interaction', startSec: t, durationSec: s2 });
+	t += s2;
+
 	if (hasParams) {
-		const s1 = 4;                         // Opening
-		const s2 = 4;                         // Interaction
-		const s3 = 5;                         // Parameters
-		const s4 = 4;                         // Color themes
-		const s5 = Math.max(3, durationSec - s1 - s2 - s3 - s4); // Outro
-		scenes = [
-			{ name: 'opening',     startSec: 0,                  durationSec: s1 },
-			{ name: 'interaction', startSec: s1,                 durationSec: s2 },
-			{ name: 'parameters',  startSec: s1 + s2,            durationSec: s3 },
-			{ name: 'colors',      startSec: s1 + s2 + s3,       durationSec: s4 },
-			{ name: 'outro',       startSec: s1 + s2 + s3 + s4,  durationSec: s5 }
-		];
-	} else {
-		const s1 = 5;
-		const s2 = 5;
-		const s4 = 5;
-		const s5 = Math.max(3, durationSec - s1 - s2 - s4);
-		scenes = [
-			{ name: 'opening',     startSec: 0,                durationSec: s1 },
-			{ name: 'interaction', startSec: s1,               durationSec: s2 },
-			{ name: 'colors',      startSec: s1 + s2,          durationSec: s4 },
-			{ name: 'outro',       startSec: s1 + s2 + s4,     durationSec: s5 }
-		];
+		scenes.push({ name: 'parameters', startSec: t, durationSec: s3 });
+		t += s3;
 	}
 
-	return scenes.map(s => ({
-		...s,
-		startFrame: Math.round(s.startSec * fps),
-		durationFrames: Math.round(s.durationSec * fps)
-	}));
+	scenes.push({ name: 'colors', startSec: t, durationSec: s4 });
+	t += s4;
+
+	scenes.push({ name: 'outro', startSec: t, durationSec: s5 });
+	t += s5;
+
+	const totalDuration = t;
+
+	return {
+		totalDuration,
+		scenes: scenes.map(s => ({
+			...s,
+			startFrame: Math.round(s.startSec * fps),
+			durationFrames: Math.round(s.durationSec * fps)
+		}))
+	};
 }
 
 /**
@@ -448,8 +449,8 @@ function paramSweepValue(param, t) {
 function computeParamValues(params, t) {
 	if (!params || params.length === 0) return [];
 
-	// Use at most 2 params for the sweep
-	const sweepParams = params.slice(0, 2);
+	// Sweep all params, each gets an equal share of time
+	const sweepParams = params;
 	const perParam = 1 / sweepParams.length;
 
 	return sweepParams.map((p, i) => {
@@ -604,12 +605,11 @@ const RAF_OVERRIDE_SCRIPT = `
 // Record a single shader
 // ---------------------------------------------------------------------------
 async function recordShader(page, baseUrl, shader, options) {
-	const { format, fps, durationSec, enableCaptions, outputDir } = options;
+	const { format, fps, enableCaptions, outputDir } = options;
 	const preset = FORMAT_PRESETS[format];
 	const viewportWidth = preset.width / DPR;
 	const viewportHeight = preset.height / DPR;
 	const dt = 1000 / fps; // ms per frame
-	const totalFrames = durationSec * fps;
 	const outputPath = join(outputDir, `${shader.id}-${format}.mp4`);
 
 	// Set viewport
@@ -641,6 +641,13 @@ async function recordShader(page, baseUrl, shader, options) {
 		}, defaultScheme.filter);
 	}
 
+	// Build choreography (duration is calculated from shader content)
+	const { totalDuration, scenes } = buildChoreography(shader, fps);
+	const totalFrames = Math.round(totalDuration * fps);
+	const durationSec = totalDuration;
+	const paramCount = shader.params ? shader.params.length : 0;
+	process.stdout.write(`  ${durationSec}s video (${paramCount} params, ${totalFrames} frames)\n`);
+
 	// Warmup: advance frames without recording
 	process.stdout.write(`  Warming up (${WARMUP_FRAMES} frames)...`);
 	for (let i = 0; i < WARMUP_FRAMES; i++) {
@@ -649,9 +656,6 @@ async function recordShader(page, baseUrl, shader, options) {
 		}, dt);
 	}
 	process.stdout.write(' done\n');
-
-	// Build choreography
-	const scenes = buildChoreography(shader, durationSec, fps);
 
 	// Spawn ffmpeg
 	const ffmpegArgs = [
@@ -873,7 +877,6 @@ function parseArgs() {
 	const opts = {
 		shader: null,
 		all: false,
-		duration: 20,
 		format: 'landscape',
 		fps: 60,
 		output: join(ROOT, 'videos'),
@@ -885,8 +888,6 @@ function parseArgs() {
 			opts.shader = arg.split('=')[1];
 		} else if (arg === '--all') {
 			opts.all = true;
-		} else if (arg.startsWith('--duration=')) {
-			opts.duration = parseInt(arg.split('=')[1], 10);
 		} else if (arg.startsWith('--format=')) {
 			opts.format = arg.split('=')[1];
 		} else if (arg.startsWith('--fps=')) {
@@ -899,10 +900,12 @@ function parseArgs() {
 			console.log(`
 Usage: node scripts/generate-videos.mjs [options]
 
+Duration is calculated automatically from shader content:
+  4s opening + 4s interaction + 3s per param + 4s color themes + 3s outro
+
 Options:
   --shader=ID          Record a specific shader (required unless --all)
   --all                Record all shaders
-  --duration=SECONDS   Total duration (default: 20)
   --format=PRESET      landscape|reel|square (default: landscape)
   --fps=FPS            Frame rate (default: 60)
   --output=DIR         Output directory (default: videos/)
@@ -965,9 +968,10 @@ async function main() {
 	console.log(`-----------------------`);
 	console.log(`Shaders:    ${allShaders.length}`);
 	console.log(`Format:     ${preset.label} (${preset.width}x${preset.height})`);
-	console.log(`Duration:   ${opts.duration}s @ ${opts.fps}fps (${opts.duration * opts.fps} frames)`);
+	console.log(`FPS:        ${opts.fps}`);
 	console.log(`DPR:        ${DPR}x`);
 	console.log(`Captions:   ${opts.captions ? 'enabled' : 'disabled'}`);
+	console.log(`Duration:   auto (4s + 4s + 3s/param + 4s + 3s)`);
 	console.log(`Output:     ${opts.output}/`);
 	console.log('');
 
@@ -1016,7 +1020,6 @@ async function main() {
 			const outPath = await recordShader(page, baseUrl, shader, {
 				format: opts.format,
 				fps: opts.fps,
-				durationSec: opts.duration,
 				enableCaptions: opts.captions,
 				outputDir: opts.output
 			});

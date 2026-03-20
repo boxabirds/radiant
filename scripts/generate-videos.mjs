@@ -313,7 +313,7 @@ async function setSliderOverlay(page, label, value, min, max, opacity) {
 				<div style="position:relative;height:4px;background:rgba(200,149,108,0.15);border-radius:2px;overflow:hidden">
 					<div id="__slider-fill" style="position:absolute;left:0;top:0;height:100%;background:rgba(200,149,108,0.7);border-radius:2px;transition:none"></div>
 				</div>
-				<div id="__slider-thumb" style="position:absolute;bottom:14px;width:12px;height:12px;border-radius:50%;background:rgba(200,149,108,0.9);box-shadow:0 0 8px rgba(200,149,108,0.4);transform:translateX(-50%);transition:none"></div>
+				<div id="__slider-thumb" style="position:absolute;bottom:12px;width:12px;height:12px;border-radius:50%;background:rgba(200,149,108,0.9);box-shadow:0 0 8px rgba(200,149,108,0.4);transform:translate(-50%,50%);transition:none"></div>
 			`;
 			document.body.appendChild(el);
 		}
@@ -544,6 +544,9 @@ function colorSceneFilter(t) {
 // ---------------------------------------------------------------------------
 const RAF_OVERRIDE_SCRIPT = `
 (function() {
+	// Skip override in outro mode (let it run real-time)
+	if (window.__outroMode) return;
+
 	// Store the real rAF but replace with our controlled version
 	const _realRAF = window.requestAnimationFrame;
 	let _storedCallback = null;
@@ -693,28 +696,23 @@ async function recordShader(page, baseUrl, shader, options) {
 		// ── Outro: navigate to dedicated outro page ──
 		if (scene.name === 'outro' && !outroLoaded) {
 			outroLoaded = true;
-			// Hide caption before navigating
 			await hideCaption(page);
+			await hideSliderOverlay(page);
 			const outroUrl = `${baseUrl}/video-outro.html?name=${encodeURIComponent(shader.title)}&url=${encodeURIComponent('radiant-shaders.com/shader/' + shader.id)}`;
+			// Use a fresh page without the rAF override for the outro
+			// (Canvas 2D outro runs fine in real-time)
+			await page.evaluateOnNewDocument(() => {
+				// Disable the rAF override for this navigation
+				window.__outroMode = true;
+			});
 			await page.goto(outroUrl, { waitUntil: 'domcontentloaded' });
-			await new Promise(r => setTimeout(r, 500));
-			// Warmup the outro animation (advance a few frames to trigger first draw)
-			for (let w = 0; w < 5; w++) {
-				await page.evaluate((dt) => {
-					if (window.__captureAdvanceFrame) window.__captureAdvanceFrame(dt);
-				}, dt);
-			}
+			// Let the outro run in real-time for a moment to start rendering
+			await new Promise(r => setTimeout(r, 1000));
 		}
 
-		// Mouse movement — only during interaction and parameters scenes
-		if (scene.name === 'interaction' || scene.name === 'parameters') {
-			let mousePos;
-			if (scene.name === 'interaction') {
-				mousePos = figure8(progress);
-			} else {
-				mousePos = spiralInward(progress);
-			}
-
+		// Mouse movement — only during interaction scene
+		if (scene.name === 'interaction') {
+			const mousePos = figure8(progress);
 			const mx = mousePos.x * viewportWidth;
 			const my = mousePos.y * viewportHeight;
 			await page.mouse.move(mx, my);
@@ -730,7 +728,7 @@ async function recordShader(page, baseUrl, shader, options) {
 				}
 			}, { x: mx, y: my });
 		} else if (scene.name !== 'outro') {
-			// Move mouse off-screen for opening, colors scenes
+			// Move mouse off-screen for all other scenes
 			if (frame === scene.startFrame) {
 				await page.mouse.move(-10, -10);
 				await page.evaluate(() => {
@@ -827,9 +825,14 @@ async function recordShader(page, baseUrl, shader, options) {
 		}
 
 		// Advance the shader by one frame
-		await page.evaluate((dt) => {
-			if (window.__captureAdvanceFrame) window.__captureAdvanceFrame(dt);
-		}, dt);
+		if (outroLoaded) {
+			// Outro runs real-time — just wait for next frame
+			await new Promise(r => setTimeout(r, dt));
+		} else {
+			await page.evaluate((dt) => {
+				if (window.__captureAdvanceFrame) window.__captureAdvanceFrame(dt);
+			}, dt);
+		}
 
 		// Capture the frame as PNG and pipe to ffmpeg
 		const screenshot = await page.screenshot({

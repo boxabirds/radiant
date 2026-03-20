@@ -227,6 +227,27 @@ function cornerSweep(t) {
 const MOUSE_PATHS = { gentleDrift, figure8, spiralInward, cornerSweep };
 
 // ---------------------------------------------------------------------------
+// Interaction detection (mirrors ShaderPreview.svelte logic)
+// ---------------------------------------------------------------------------
+
+/**
+ * Detect interaction type from shader HTML source.
+ * Returns: 'hover' | 'drag' | 'click' | 'click+hover' | 'none'
+ */
+async function detectInteraction(shaderFile) {
+	const src = await readFile(join(STATIC, shaderFile), 'utf8');
+	const hasMouseDown = /addEventListener\s*\(\s*['"]mouse(down|up)['"]/.test(src);
+	const hasClick = /addEventListener\s*\(\s*['"]click['"]/.test(src);
+	const hasMouseMove = /addEventListener\s*\(\s*['"]mousemove['"]/.test(src);
+
+	if (hasClick && hasMouseMove) return 'click+hover';
+	if (hasMouseDown && hasMouseMove) return 'drag';
+	if (hasClick) return 'click';
+	if (hasMouseMove) return 'hover';
+	return 'none';
+}
+
+// ---------------------------------------------------------------------------
 // Caption system
 // ---------------------------------------------------------------------------
 
@@ -362,7 +383,7 @@ function captionOpacity(frameInScene, sceneDurationFrames, fadeFrames = 30) {
  * Build a default choreography for a shader.
  * Returns an array of scene descriptors.
  */
-function buildChoreography(shader, fps) {
+function buildChoreography(shader, fps, interactionType) {
 	const paramCount = shader.params ? shader.params.length : 0;
 	const hasParams = paramCount > 0;
 
@@ -641,12 +662,13 @@ async function recordShader(page, baseUrl, shader, options) {
 		}, defaultScheme.filter);
 	}
 
-	// Build choreography (duration is calculated from shader content)
-	const { totalDuration, scenes } = buildChoreography(shader, fps);
+	// Detect interaction type and build choreography
+	const interactionType = await detectInteraction(shader.file);
+	const { totalDuration, scenes } = buildChoreography(shader, fps, interactionType);
 	const totalFrames = Math.round(totalDuration * fps);
 	const durationSec = totalDuration;
 	const paramCount = shader.params ? shader.params.length : 0;
-	process.stdout.write(`  ${durationSec}s video (${paramCount} params, ${totalFrames} frames)\n`);
+	process.stdout.write(`  ${durationSec}s video (${paramCount} params, ${interactionType} interaction, ${totalFrames} frames)\n`);
 
 	// Warmup: advance frames without recording
 	process.stdout.write(`  Warming up (${WARMUP_FRAMES} frames)...`);
@@ -715,18 +737,43 @@ async function recordShader(page, baseUrl, shader, options) {
 			const mousePos = figure8(progress);
 			const mx = mousePos.x * viewportWidth;
 			const my = mousePos.y * viewportHeight;
-			await page.mouse.move(mx, my);
-			await page.evaluate(({ x, y }) => {
-				const c = document.getElementById('canvas');
-				if (c) {
-					const r = c.getBoundingClientRect();
-					c.dispatchEvent(new MouseEvent('mousemove', {
-						clientX: x, clientY: y,
-						offsetX: x - r.left, offsetY: y - r.top,
-						bubbles: true, cancelable: true, view: window
-					}));
+
+			if (interactionType === 'drag') {
+				// Drag: mousedown at start, move throughout, mouseup at end
+				if (frame === scene.startFrame) {
+					await page.mouse.move(mx, my);
+					await page.mouse.down();
+				} else if (frame === scene.startFrame + scene.durationFrames - 1) {
+					await page.mouse.move(mx, my);
+					await page.mouse.up();
+				} else {
+					await page.mouse.move(mx, my);
 				}
-			}, { x: mx, y: my });
+			} else if (interactionType === 'click' || interactionType === 'click+hover') {
+				// Move cursor + periodic clicks
+				await page.mouse.move(mx, my);
+				await page.evaluate(({ x, y }) => {
+					const c = document.getElementById('canvas');
+					if (c) c.dispatchEvent(new MouseEvent('mousemove', {
+						clientX: x, clientY: y, bubbles: true, view: window
+					}));
+				}, { x: mx, y: my });
+				// Click every ~1.5 seconds
+				const framesPerClick = Math.round(1.5 * fps);
+				const frameInScene = frame - scene.startFrame;
+				if (frameInScene > 0 && frameInScene % framesPerClick === 0) {
+					await page.mouse.click(mx, my);
+				}
+			} else {
+				// Hover: just move
+				await page.mouse.move(mx, my);
+				await page.evaluate(({ x, y }) => {
+					const c = document.getElementById('canvas');
+					if (c) c.dispatchEvent(new MouseEvent('mousemove', {
+						clientX: x, clientY: y, bubbles: true, view: window
+					}));
+				}, { x: mx, y: my });
+			}
 		} else if (scene.name !== 'outro') {
 			// Move mouse off-screen for all other scenes
 			if (frame === scene.startFrame) {
@@ -802,7 +849,10 @@ async function recordShader(page, baseUrl, shader, options) {
 					captionText = shader.title;
 					break;
 				case 'interaction':
-					captionText = 'Move cursor to interact';
+					if (interactionType === 'drag') captionText = 'Drag to interact';
+					else if (interactionType === 'click+hover') captionText = 'Move & click to interact';
+					else if (interactionType === 'click') captionText = 'Click to interact';
+					else captionText = 'Move cursor to interact';
 					break;
 				case 'parameters':
 					// Slider overlay handles this scene — no caption needed

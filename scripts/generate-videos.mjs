@@ -755,7 +755,20 @@ async function recordShader(page, baseUrl, devUrl, shader, options) {
 
 	// Detect interaction type and build choreography
 	const interactionType = await detectInteraction(shader.file);
-	const { totalDuration, scenes } = buildChoreography(shader, fps, interactionType);
+	let { totalDuration, scenes } = buildChoreography(shader, fps, interactionType);
+
+	// Scene filter for debugging (e.g. --scene=colors)
+	const sceneFilter = options.sceneFilter;
+	if (sceneFilter) {
+		// Always need detailpage+zoom for setup, then the target scene
+		const setupScenes = scenes.filter(s => s.name === 'detailpage' || s.name === 'zoom');
+		const targetScene = scenes.find(s => s.name === sceneFilter);
+		if (targetScene) {
+			scenes = [...setupScenes, targetScene];
+			totalDuration = targetScene.startSec + targetScene.durationSec;
+		}
+	}
+
 	const totalFrames = Math.round(totalDuration * fps);
 	const durationSec = totalDuration;
 	const paramCount = shader.params ? shader.params.length : 0;
@@ -1099,6 +1112,8 @@ async function recordShader(page, baseUrl, devUrl, shader, options) {
 
 			// On first frame, build the grid with 6 live shader iframes
 			if (frameInScene === 0) {
+				// Use same origin (dev server) for grid iframes to allow cross-frame access
+				const gridBaseUrl = devUrl;
 				await page.evaluate(({ schemes, shaderFile, baseUrl }) => {
 					const container = document.getElementById('__video-overlays') || document.body;
 					const grid = document.createElement('div');
@@ -1158,7 +1173,7 @@ async function recordShader(page, baseUrl, devUrl, shader, options) {
 						grid.appendChild(cell);
 					}
 					container.appendChild(grid);
-				}, { schemes: COLOR_SCHEMES, shaderFile: shader.file, baseUrl });
+				}, { schemes: COLOR_SCHEMES, shaderFile: shader.file, baseUrl: gridBaseUrl });
 
 				// Wait for iframes to load
 				await new Promise(r => setTimeout(r, 2000));
@@ -1309,6 +1324,7 @@ function parseArgs() {
 		fps: 60,
 		warmup: DEFAULT_WARMUP_FRAMES,
 		devUrl: 'http://localhost:5174',
+		scene: null, // debug: only render a specific scene
 		output: join(ROOT, 'videos'),
 		captions: true
 	};
@@ -1322,6 +1338,8 @@ function parseArgs() {
 			opts.warmup = parseInt(arg.split('=')[1], 10);
 		} else if (arg.startsWith('--dev-url=')) {
 			opts.devUrl = arg.split('=')[1];
+		} else if (arg.startsWith('--scene=')) {
+			opts.scene = arg.split('=')[1]; // e.g. --scene=colors
 		} else if (arg.startsWith('--format=')) {
 			opts.format = arg.split('=')[1];
 		} else if (arg.startsWith('--fps=')) {
@@ -1456,6 +1474,7 @@ async function main() {
 				format: opts.format,
 				fps: opts.fps,
 				warmup: opts.warmup,
+				sceneFilter: opts.scene,
 				enableCaptions: opts.captions,
 				outputDir: opts.output
 			});

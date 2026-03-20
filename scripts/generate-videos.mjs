@@ -1111,6 +1111,12 @@ async function recordShader(page, baseUrl, devUrl, shader, options) {
 					}
 				}, dt);
 
+				// Hide grid before capturing to avoid gridception
+				await page.evaluate(() => {
+					const grid = document.getElementById('__color-grid');
+					if (grid) grid.style.display = 'none';
+				});
+
 				const panelImages = [];
 				for (const scheme of COLOR_SCHEMES) {
 					await page.evaluate((f) => {
@@ -1121,10 +1127,12 @@ async function recordShader(page, baseUrl, devUrl, shader, options) {
 					const shot = await page.screenshot({ type: 'jpeg', quality: 80, fullPage: false, encoding: 'base64' });
 					panelImages.push({ base64: shot, name: scheme.name });
 				}
-				// Reset filter
+				// Reset filter and show grid again
 				await page.evaluate((f) => {
 					const iframe = document.querySelector('iframe');
 					if (iframe) iframe.style.filter = f;
+					const grid = document.getElementById('__color-grid');
+					if (grid) grid.style.display = '';
 				}, defaultScheme.filter);
 
 				// Build or update grid

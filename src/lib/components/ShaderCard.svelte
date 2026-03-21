@@ -35,9 +35,6 @@
 		const obs = new IntersectionObserver(
 			([e]) => {
 				visible = e.isIntersecting;
-				if (visible && !srcdoc) {
-					fetchShaderHtml(shader.file, shader.id).then((html) => { srcdoc = html; });
-				}
 			},
 			{ rootMargin: '200px' }
 		);
@@ -47,6 +44,9 @@
 
 	// ── React to live mode / visibility changes ─────────────────────
 	$effect(() => {
+		if (active && !srcdoc) {
+			fetchShaderHtml(shader.file, shader.id).then((html) => { srcdoc = html; });
+		}
 		if (active && srcdoc && !loadIframe) {
 			loadIframe = true;
 		}
@@ -93,11 +93,8 @@
 	}
 
 	// ── Hover ────────────────────────────────────────────────────────
-	async function onMouseEnter() {
+	function onMouseEnter() {
 		hovered = true;
-		if (!srcdoc) {
-			srcdoc = await fetchShaderHtml(shader.file, shader.id);
-		}
 	}
 
 	function onMouseLeave() {
@@ -118,7 +115,7 @@
 		<div
 			class="preview-sprite"
 			class:hidden={showIframe}
-			style:background-image="url(/previews/{shader.id}.webp)"
+			style:background-image={visible ? `url(/previews/${shader.id}.webp)` : 'none'}
 			style:background-position="0 {spritePosY}%"
 		></div>
 

@@ -43,8 +43,18 @@ struct Uniforms {
   color_bright: vec4f,
   color_hot: vec4f,
 
-  wave_str: f32,        // NEW: 0=off, 1=full wave interference
-  wave_freq: f32,       // NEW: wave frequency (2-6)
+  wave_str: f32,
+  wave_freq: f32,
+  orb_sharpness: f32,   // 0=gaussian, 1=metaball (inverse-distance)
+  moire_str: f32,       // 0=off, 1=full moiré interference
+
+  burn_str: f32,        // 0=off, 1=full burn frontier
+  burn_speed: f32,      // burn cycle speed
+  spiral_str: f32,      // 0=off, 1=full spiral arms
+  spiral_arms: f32,     // number of arms (3-8)
+
+  kaleido_str: f32,     // 0=off, >0.3 activates fold
+  kaleido_seg: f32,     // segment count (4-12)
   _pad1: f32,
   _pad2: f32,
 };
@@ -226,7 +236,9 @@ fn compute_orbs(p: vec2f, t: f32) -> OrbResult {
       cos(t * (0.15 + fi * 0.018) + fi * 1.7) * 0.4 + sin(t * (0.11 + fi * 0.022) + fi * 2.5) * 0.2
     );
     let d = length(p - center);
-    let glow = exp(-d * d / rr) * u.orb_intensity;
+    let gaussian = exp(-d * d / rr);
+    let metaball = min(rr / max(d * d, 0.0005), 4.0);
+    let glow = mix(gaussian, metaball, u.orb_sharpness) * u.orb_intensity;
     result.field += glow;
     result.color += orb_color(i) * glow;
   }
@@ -264,6 +276,53 @@ fn fabric_fold(p: vec2f, t: f32) -> vec3f {
   return vec3f(h, g);
 }
 
+// ─── Kaleidoscope fold ───
+// Folds UV into radial segments for mandala symmetry.
+// Uses floor-based modulo for correct negative angle handling in WGSL.
+fn kaleido_fold(p: vec2f) -> vec2f {
+  let r = length(p);
+  var a = atan2(p.y, p.x);
+  let seg = 3.14159265 / max(u.kaleido_seg, 2.0);
+  let seg2 = seg * 2.0;
+  a = a - floor(a / seg2) * seg2;
+  if (a > seg) { a = seg2 - a; }
+  return vec2f(cos(a), sin(a)) * r;
+}
+
+// ─── Spiral field ───
+// Log-spiral distance field. Tightness hardcoded to 0.18.
+fn spiral_field(p: vec2f, t: f32) -> f32 {
+  let r = length(p);
+  if (r < 0.01) { return 0.0; }
+  let theta = atan2(p.y, p.x);
+  let spiral_theta = log(r / 0.03) / 0.18;
+  let arm_spacing = 6.28318 / max(u.spiral_arms, 1.0);
+  let raw_ang = theta - spiral_theta + t * 0.3;
+  var ang = raw_ang - floor(raw_ang / arm_spacing) * arm_spacing;
+  if (ang > arm_spacing * 0.5) { ang -= arm_spacing; }
+  let screen_d = abs(ang) * r;
+  let line_w = 0.06 * smoothstep(0.08, 0.5, r);
+  return smoothstep(line_w, 0.0, screen_d) * smoothstep(0.85, 0.15, r);
+}
+
+// ─── Moiré interference ───
+// Multiplicative ring pattern from 4 orbiting centers. Freq hardcoded to 55.
+fn moire_field(p: vec2f, t: f32) -> f32 {
+  var product = 1.0;
+  var additive = 0.0;
+  for (var i = 0; i < 4; i++) {
+    let fi = f32(i);
+    let center = vec2f(
+      0.22 * cos(t * 0.03 * (fi + 1.0) + fi * 2.1),
+      0.18 * sin(t * 0.04 * (fi + 1.0) + fi * 1.4)
+    );
+    let ring = sin(length(p - center) * 55.0);
+    product *= ring;
+    additive += ring;
+  }
+  return product * 0.7 + additive * 0.25 * 0.3;
+}
+
 // ─── Hue rotation ───
 fn hue_rotate(c: vec3f, a: f32) -> vec3f {
   let ca = cos(a); let sa = sin(a);
@@ -290,9 +349,10 @@ fn fs(@builtin(position) frag_coord: vec4f) -> @location(0) vec4f {
   }
 
   // ── Build the field ──
-  // All coordinate-space inputs use p (already swirled by mouse).
-  // warp_scale is kept LOW (0.4-0.8) to ensure large shapes.
-  let wp = p * u.warp_scale;
+  // Kaleidoscope: binary switch (not mix) to avoid seams at fold boundaries.
+  // select() evaluates both but picks one — no coordinate interpolation artifacts.
+  let kp = select(p, kaleido_fold(p), u.kaleido_str > 0.3);
+  let wp = kp * u.warp_scale;
 
   // Domain-warped noise field
   var field = warped_field(wp, t);
@@ -302,6 +362,23 @@ fn fs(@builtin(position) frag_coord: vec4f) -> @location(0) vec4f {
 
   // Wave interference: undulation added to field height
   field += wave_field(p, t) * u.wave_str;
+
+  // Spiral arms: log-spiral distance field
+  let spiral_gate = smoothstep(0.3, 0.6, u.spiral_str);
+  field += spiral_field(p, t) * spiral_gate;
+
+  // Moiré interference: high-freq rings need hard gate to avoid bleed
+  let moire_gate = smoothstep(0.3, 0.6, u.moire_str);
+  field += moire_field(p, t) * moire_gate;
+
+  // Burn frontier: threshold sweep on noise field with bright edge
+  let burn_gate = smoothstep(0.3, 0.6, u.burn_str);
+  let burn_phase = fract(t * u.burn_speed * 0.05);
+  let burn_thresh = mix(0.85, -0.3, smoothstep(0.0, 0.85, burn_phase));
+  let burn_mask = smoothstep(burn_thresh, burn_thresh - 0.12, field);
+  let burn_edge = smoothstep(burn_thresh - 0.02, burn_thresh, field)
+                * smoothstep(burn_thresh + 0.08, burn_thresh, field);
+  field = mix(field, field * burn_mask, burn_gate);
 
   // Voronoi cracks: computed in WARPED space so they flow with the field
   // The warp gradient displaces the voronoi lookup, integrating it with the noise
@@ -402,6 +479,10 @@ fn fs(@builtin(position) frag_coord: vec4f) -> @location(0) vec4f {
   let wave_val = wave_field(p, t);
   let wave_crest = smoothstep(0.3, 0.7, wave_val) * u.wave_str;
   col += u.color_bright.rgb * wave_crest * 0.25;
+
+  // Burn frontier glow
+  col += u.color_hot.rgb * burn_edge * burn_gate * 0.8;
+  col += u.color_bright.rgb * burn_edge * burn_gate * 0.4;
 
   // Vignette
   let vig = length(p * vec2f(0.85, 1.0));

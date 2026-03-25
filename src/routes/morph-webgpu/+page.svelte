@@ -110,24 +110,46 @@
 			// No voronoi. Layout: [oct, decay, fmul, scale, w1, w2,
 			//   orbN, orbR, orbI, orbMode, fold, foldF, norm, diff, spec, specP, fres, edge,
 			//   ridge, waveStr, waveF,
-			//   sR,sG,sB, mR,mG,mB, bR,bG,bB, hR,hG,hB]
+			//   sR,sG,sB, mR,mG,mB, bR,bG,bB, hR,hG,hB,
+			//   orbSharp, moireStr, burnStr, burnSpeed, spiralStr, spiralArms,
+			//   kaleidoStr, kaleidoSeg]
 			const P = [
 				// 0: Flowing warp (fluid-amber)
 				[3, .48, 2.10, .70, 3.2, 2.5,  7,.25,0,0, 0,2, 0,0,0,40,0, .6,
 				 .35, 0,2,
-				 .03,.025,.01, .20,.14,.07, .78,.58,.24, .95,.85,.50],
+				 .03,.025,.01, .20,.14,.07, .78,.58,.24, .95,.85,.50, 0,0, 0,.5, 0,5, 0,8],
 				// 1: Orb field (chromatic-bloom)
 				[3, .15, 2.0, .25, 0,0,  7,.30,1.5,1.0, 0,2, 0,0,0,40,0, 0,
 				 0, 0,2,
-				 .01,.008,.005, .04,.03,.02, .20,.15,.08, .80,.65,.35],
+				 .01,.008,.005, .04,.03,.02, .20,.15,.08, .80,.65,.35, 0,0, 0,.5, 0,5, 0,8],
 				// 2: Silk folds (silk-cascade)
 				[3, .30, 2.0, .50, .15,0,  7,.25,0,0, 1.0,3.0, 1.0,.75,.85,42,.15, 0,
 				 0, 0,2,
-				 .04,.025,.015, .35,.18,.10, .85,.55,.30, 1.0,.88,.65],
+				 .04,.025,.015, .35,.18,.10, .85,.55,.30, 1.0,.88,.65, 0,0, 0,.5, 0,5, 0,8],
 				// 3: Ocean waves (bioluminescence)
 				[3, .42, 2.03, .65, .8,.3,  7,.25,0,0, 0,2, .4,.25,0,40,0, 0,
 				 0, .8,3.0,
-				 .02,.025,.03, .08,.18,.15, .40,.60,.45, .90,.80,.55],
+				 .02,.025,.03, .08,.18,.15, .40,.60,.45, .90,.80,.55, 0,0, 0,.5, 0,5, 0,8],
+				// 4: Neon metaballs (neon-drip)
+				[3, .15, 2.0, .30, 0,0,  7,.28,1.8,1.0, 0,2, 0,0,0,40,0, 0,
+				 0, 0,2,
+				 .005,.005,.01, .03,.02,.06, .15,.08,.30, .90,.50,.80, 1.0,0, 0,.5, 0,5, 0,8],
+				// 5: Moiré beats (moire-interference)
+				[3, .15, 2.0, .40, 0,0,  7,.25,0,0, 0,2, 0,0,0,40,0, 0,
+				 0, 0,2,
+				 .01,.01,.008, .08,.06,.04, .50,.35,.15, .85,.75,.40, 0,1.0, 0,.5, 0,5, 0,8],
+				// 6: Burning film (burning-film)
+				[3, .48, 2.10, .65, 2.5,1.8,  7,.25,0,0, 0,2, 0,0,0,40,0, .8,
+				 .4, 0,2,
+				 .02,.01,.005, .25,.10,.03, .80,.45,.12, 1.0,.85,.40, 0,0, 1.0,.4, 0,5, 0,8],
+				// 7: Spiral vortex (vortex)
+				[3, .42, 2.05, .55, 1.0,.5,  7,.25,0,0, 0,2, 0,0,0,40,0, .2,
+				 0, 0,2,
+				 .02,.015,.008, .12,.08,.04, .55,.40,.18, .90,.75,.40, 0,0, 0,.5, 1.0,5, 0,8],
+				// 8: Kaleidoscope mandala (kaleidoscope-runway)
+				[3, .40, 2.05, .60, 1.5,.8,  7,.25,0,0, 0,2, 0,0,0,40,0, .3,
+				 .2, 0,2,
+				 .02,.015,.01, .15,.10,.06, .65,.45,.20, .95,.80,.45, 0,0, 0,.5, 0,5, 1.0,8],
 			];
 
 			// Map preset array index to uniform buffer index (no voronoi)
@@ -136,7 +158,8 @@
 				15, 16, 17, 18,                // orbs
 				19, 20, 21, 22, 23, 24, 25, 26, // fold + lighting + edge
 				29, 48, 49,                    // ridge, waves (skip voronoi)
-				32,33,34, 36,37,38, 40,41,42, 44,45,46 // colors
+				32,33,34, 36,37,38, 40,41,42, 44,45,46, // colors
+				50, 51, 52, 53, 54, 55, 56, 57  // orb_sharp, moire, burn, spiral, kaleido
 			];
 
 			const N_PRESETS = P.length;
@@ -148,9 +171,14 @@
 			function tick(now: number) {
 				const timeSec = (now - start) / 2000; // half speed: everything runs at 50%
 
-				// Proximity signals — wide speed spread (2.3:1) decorrelates them
+				// Proximity signals
 				prox[0] = drift(timeSec, 0.018, 1);
 				prox[1] = drift(timeSec, 0.037, 2);
+				prox[4] = drift(timeSec, 0.028, 13);
+				prox[5] = drift(timeSec, 0.020, 17);
+				prox[6] = drift(timeSec, 0.039, 19);
+				prox[7] = drift(timeSec, 0.033, 23);
+				prox[8] = drift(timeSec, 0.015, 29);
 				prox[2] = drift(timeSec, 0.025, 3);
 				prox[3] = drift(timeSec, 0.042, 5);
 

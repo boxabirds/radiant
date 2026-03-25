@@ -34,30 +34,41 @@ struct Uniforms {
   vignette_str: f32,
 
   grain_str: f32,
-  _pad1: f32,
-  _pad2: f32,
-  _pad3: f32,
+  ridge_str: f32,       // NEW: 0=smooth FBM, 1=ridged veins
+  voronoi_str: f32,     // NEW: 0=off, 1=full cracks
+  voronoi_scale: f32,   // NEW: cell size (3-8)
 
   color_shadow: vec4f,
   color_mid: vec4f,
   color_bright: vec4f,
   color_hot: vec4f,
+
+  wave_str: f32,        // NEW: 0=off, 1=full wave interference
+  wave_freq: f32,       // NEW: wave frequency (2-6)
+  _pad1: f32,
+  _pad2: f32,
 };
 
 @group(0) @binding(0) var<uniform> u: Uniforms;
 
 // ─── Vertex ───
-struct VSOut {
-  @builtin(position) pos: vec4f,
-};
+struct VSOut { @builtin(position) pos: vec4f };
 
 @vertex
 fn vs(@builtin(vertex_index) vi: u32) -> VSOut {
-  // Fullscreen triangle
   var p = array<vec2f, 3>(vec2f(-1, -1), vec2f(3, -1), vec2f(-1, 3));
   var out: VSOut;
   out.pos = vec4f(p[vi], 0, 1);
   return out;
+}
+
+// ─── Hash (for Voronoi) ───
+fn hash2(p: vec2f) -> vec2f {
+  let k = vec2f(
+    fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453),
+    fract(sin(dot(p, vec2f(269.5, 183.3))) * 43758.5453)
+  );
+  return k;
 }
 
 // ─── Simplex 2D noise ───
@@ -95,7 +106,7 @@ fn fbm(p_in: vec2f, t: f32) -> f32 {
   var val = 0.0;
   var amp = 0.5;
   let rot = mat2x2f(0.8, 0.6, -0.6, 0.8);
-  for (var i = 0; i < 3; i++) {
+  for (var i = 0; i < 5; i++) {
     if (f32(i) >= u.fbm_octaves) { break; }
     val += amp * snoise(p + vec2f(sin(t * 0.13), cos(t * 0.17)) * 2.0);
     p = rot * p * u.fbm_freq_mul;
@@ -122,6 +133,70 @@ fn warped_field(p: vec2f, t: f32) -> f32 {
   let f = fbm(p + u.warp2_str * r, t * 0.8);
   g_warp_grad = u.warp1_str * q + u.warp2_str * r;
   return f;
+}
+
+// ─── NEW: Ridged noise ───
+// Folds the noise into bright vein/ridge patterns.
+// ridge_str=0 → passthrough, ridge_str=1 → fully ridged
+fn apply_ridge(field: f32) -> f32 {
+  let ridged = 1.0 - abs(field * 2.0 - 0.3);
+  return mix(field, ridged, u.ridge_str);
+}
+
+// ─── NEW: Voronoi cracks ───
+// Returns (minDist, edgeDist). edgeDist is 0 at crack lines.
+struct VoronoiResult { min_dist: f32, edge_dist: f32 };
+
+fn voronoi_cracks(p_in: vec2f, t: f32) -> VoronoiResult {
+  let p = p_in * u.voronoi_scale;
+  let cell = floor(p);
+  let local = fract(p);
+
+  var min_d = 8.0;
+  var second_d = 8.0;
+
+  // 3x3 neighbor search
+  for (var y = -1; y <= 1; y++) {
+    for (var x = -1; x <= 1; x++) {
+      let neighbor = vec2f(f32(x), f32(y));
+      let offset = cell + neighbor;
+      var pt = hash2(offset);
+      // Animate cell points gently
+      pt += 0.3 * vec2f(
+        sin(t * 0.09 + pt.x * 20.0),
+        cos(t * 0.07 + pt.y * 20.0)
+      );
+      let diff = neighbor + pt - local;
+      let d = dot(diff, diff);
+      if (d < min_d) {
+        second_d = min_d;
+        min_d = d;
+      } else if (d < second_d) {
+        second_d = d;
+      }
+    }
+  }
+
+  min_d = sqrt(min_d);
+  second_d = sqrt(second_d);
+  let edge = second_d - min_d; // 0 at crack lines
+
+  return VoronoiResult(min_d, edge);
+}
+
+// ─── NEW: Wave interference ───
+// Sum of directional sine waves for ocean-like undulation.
+fn wave_field(p: vec2f, t: f32) -> f32 {
+  var h = 0.0;
+  let freq = u.wave_freq;
+
+  // 4 waves at different angles, speeds, and amplitudes
+  h += sin(p.x * freq * 1.0 + p.y * freq * 0.3 + t * 0.7) * 0.35;
+  h += sin(p.x * freq * -0.4 + p.y * freq * 0.9 + t * 0.5 + 1.3) * 0.25;
+  h += sin(p.x * freq * 0.6 + p.y * freq * -0.7 + t * 0.9 + 2.7) * 0.20;
+  h += sin(p.x * freq * 1.3 + p.y * freq * 0.5 + t * 0.3 + 4.1) * 0.15;
+
+  return h; // roughly -0.95..0.95
 }
 
 // ─── Orbs ───
@@ -214,39 +289,74 @@ fn fs(@builtin(position) frag_coord: vec4f) -> @location(0) vec4f {
     p = mn + mat2x2f(ca, -sa, sa, ca) * diff;
   }
 
-  // Noise field + domain warp (always runs; 0 octaves = loop exits immediately)
-  let field = warped_field(p * u.warp_scale, t);
+  // ── Build the field ──
+  // All coordinate-space inputs use p (already swirled by mouse).
+  // warp_scale is kept LOW (0.4-0.8) to ensure large shapes.
+  let wp = p * u.warp_scale;
 
-  // Orbs (always runs; 0 count = loop exits immediately)
+  // Domain-warped noise field
+  var field = warped_field(wp, t);
+
+  // Ridged noise: fold field into vein patterns
+  field = apply_ridge(field);
+
+  // Wave interference: undulation added to field height
+  field += wave_field(p, t) * u.wave_str;
+
+  // Voronoi cracks: computed in WARPED space so they flow with the field
+  // The warp gradient displaces the voronoi lookup, integrating it with the noise
+  let vor_p = p + g_warp_grad * 0.15; // cracks follow the warp flow
+  let vor = voronoi_cracks(vor_p, t);
+  let crack_edge = vor.edge_dist;
+  // Cracks CUT INTO the field — they create dark valleys with bright edges
+  let crack_cut = smoothstep(0.12, 0.0, crack_edge); // 1 at crack, 0 away
+  field = mix(field, field * 0.3 - 0.2, crack_cut * u.voronoi_str); // darken at cracks
+  // Cell distance modulates the field subtly (each cell gets slightly different value)
+  field += (vor.min_dist - 0.3) * u.voronoi_str * 0.2;
+
+  // Orbs
   let orbs = compute_orbs(p, t);
 
-  // Combine: envelope fades smoothly with orb_color_mode
+  // Combine field + orbs
   let envelope = mix(
     mix(1.0, clamp(orbs.field, 0.0, 1.0), 1.0 - u.orb_color_mode),
-    1.0,
-    u.orb_color_mode
+    1.0, u.orb_color_mode
   );
   var height = field * envelope + orbs.field * (1.0 - u.orb_color_mode) * 0.08;
 
-  // Fabric fold (always computed; fold_str=0 means mix weight is 0)
+  // Fabric fold
   let fold = fabric_fold(p, t);
   height = mix(height, fold.x, u.fold_str);
   let fold_grad = fold.yz * u.fold_str;
 
-  // Normal (always computed; normal_str=0 means N stays (0,0,1))
-  let grad = g_warp_grad * 0.3 + fold_grad * 1.8;
+  // Normal: warp gradient + fold gradient + crack edges contribute
+  var grad = g_warp_grad * 0.3 + fold_grad * 1.8;
+  // Crack edges add sharp normal discontinuity
+  let crack_normal = crack_cut * u.voronoi_str * 4.0;
+  grad += vec2f(crack_normal, crack_normal * 0.7);
   let aN = normalize(vec3f(-grad, 1.0));
   let N = normalize(mix(vec3f(0.0, 0.0, 1.0), aN, u.normal_str));
 
-  // Color palette
-  let fn_ = smoothstep(-0.5, 1.2, field);
-  var base = mix(u.color_shadow.rgb, u.color_mid.rgb, smoothstep(0.0, 0.35, fn_));
-  base = mix(base, u.color_bright.rgb, smoothstep(0.3, 0.65, fn_));
-  base = mix(base, u.color_hot.rgb, smoothstep(0.6, 0.95, fn_));
+  // Color palette: use BOTH field value AND warp vectors for spatial variation.
+  // Field value selects the base brightness band.
+  // Warp vectors (q, r from domain warping) add hue variation across the screen,
+  // so you get multiple colors visible simultaneously, not a monotone field.
+  let fn_ = smoothstep(-0.6, 0.8, field);
+  var base = mix(u.color_shadow.rgb, u.color_mid.rgb, smoothstep(0.0, 0.25, fn_));
+  base = mix(base, u.color_bright.rgb, smoothstep(0.2, 0.5, fn_));
+  base = mix(base, u.color_hot.rgb, smoothstep(0.45, 0.85, fn_));
+
+  // Warp vectors create cross-screen hue shifts:
+  // q.x pushes toward bright, q.y pushes toward mid, length(r) pushes toward hot
+  let q_len = length(g_warp_grad) * 0.12;
+  base = mix(base, u.color_bright.rgb, clamp(q_len, 0.0, 0.4));
+  // Use spatial position + time for additional color breakup
+  let color_noise = snoise(p * 1.5 + vec2f(sin(t * 0.07), cos(t * 0.09)) * 3.0);
+  base = mix(base, mix(u.color_mid.rgb, u.color_hot.rgb, fn_), clamp(color_noise * 0.25 + 0.1, 0.0, 0.3));
 
   var col = base;
 
-  // Lighting (always computed; diffuse_str=0 and spec_str=0 means no visible effect)
+  // Lighting
   let V = vec3f(0.0, 0.0, 1.0);
   let L1 = normalize(vec3f(0.4, 0.5, 0.9));
   let L2 = normalize(vec3f(-0.6, -0.3, 0.7));
@@ -271,18 +381,27 @@ fn fs(@builtin(position) frag_coord: vec4f) -> @location(0) vec4f {
   col = mix(col, diffuse, u.diffuse_str);
   col += u.color_hot.rgb * spec * u.spec_str * fr_mix * 0.8;
 
-  // Environment reflection (scales with fresnel, so 0 when fresnel_f0=0)
+  // Environment reflection
   let refl_uv = N.xy * 0.5 + 0.5;
   col += mix(u.color_shadow.rgb, u.color_bright.rgb, refl_uv.y) * fres * u.fresnel_f0 * 0.3;
 
-  // Additive orb color (scales with orb_color_mode, so 0 when mode=0)
+  // Additive orb color
   col = mix(col, orbs.color, u.orb_color_mode);
 
-  // Edge glow (scales with edge_glow_str, so 0 when str=0)
+  // Edge glow (from noise field edges)
   let ink = smoothstep(-0.2, 0.1, field) * envelope;
   let edge_raw = ink * (1.0 - ink) * 4.0;
   col += u.color_bright.rgb * smoothstep(0.05, 0.5, edge_raw) * 0.5 * u.edge_glow_str;
   col += u.color_hot.rgb * smoothstep(0.6, 1.0, edge_raw) * 0.4 * u.edge_glow_str;
+
+  // Crack edge glow: bright lines at fracture boundaries (integrated, not overlay)
+  let crack_glow = smoothstep(0.06, 0.0, crack_edge) * u.voronoi_str;
+  col += u.color_hot.rgb * crack_glow * 0.6;
+
+  // Wave crest highlights
+  let wave_val = wave_field(p, t);
+  let wave_crest = smoothstep(0.3, 0.7, wave_val) * u.wave_str;
+  col += u.color_bright.rgb * wave_crest * 0.25;
 
   // Vignette
   let vig = length(p * vec2f(0.85, 1.0));
@@ -292,11 +411,11 @@ fn fs(@builtin(position) frag_coord: vec4f) -> @location(0) vec4f {
   col = clamp(col, vec3f(0.0), vec3f(4.0));
   col = col * (2.51 * col + 0.03) / (col * (2.43 * col + 0.59) + 0.14);
 
-  // Grain (grain_str=0 means no visible effect)
+  // Grain
   let grain = fract(sin(dot(frag_coord.xy + fract(u.time * 7.13) * 100.0, vec2f(12.9898, 78.233))) * 43758.5453) - 0.5;
   col += grain * u.grain_str;
 
-  // Hue shift (always applied, 0 = identity rotation)
+  // Hue shift
   col = hue_rotate(col, u.hue_shift);
 
   return vec4f(clamp(col, vec3f(0.0), vec3f(1.0)), 1.0);

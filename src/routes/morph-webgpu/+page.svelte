@@ -62,9 +62,10 @@
 		if (!canvas) return;
 		if (!navigator.gpu) { supported = false; return; }
 
-		const buf = new Float32Array(UNIFORM_FLOATS);
+		const buf = new Float32Array(UNIFORM_FLOATS); // 52 floats = 208 bytes
 		let raf = 0;
 		let engine: MorphEngine | null = null;
+		let onResize: (() => void) | null = null;
 
 		(async () => {
 			try {
@@ -76,8 +77,14 @@
 			}
 
 			const dpr = 1;
-			let cw = 0, ch = 0;
-			function resize() {
+			let cw = Math.round(innerWidth * dpr);
+			let ch = Math.round(innerHeight * dpr);
+			canvas!.width = cw;
+			canvas!.height = ch;
+
+			// Only resize on actual window resize events, never in the tick loop.
+			// Setting canvas.width clears the WebGPU surface → black frame.
+			onResize = function() {
 				const w = Math.round(innerWidth * dpr);
 				const h = Math.round(innerHeight * dpr);
 				if (w !== cw || h !== ch) {
@@ -85,93 +92,102 @@
 					canvas!.width = w; canvas!.height = h;
 				}
 			}
-			resize();
-			window.addEventListener('resize', resize);
+			window.addEventListener('resize', onResize);
 
 			const start = performance.now();
 
-			// Pure continuous drift. No segments, no modes, no floor().
-			// Parameters are grouped by shared oscillators so they correlate.
-			// Three slow "master" signals drive structure, orbs, and lighting.
-			// Everything is sine-sum based — infinitely smooth, zero discontinuities.
+			// ── Presets as attractors ──
+			// Matched to original gallery shaders. Each preset's "hero" feature is
+			// at full strength; competing features are zeroed so intermediate blends
+			// still read as one effect fading into another, not paint mixing.
+			// Colors stay in the warm-amber family (hue_shift provides variety)
+			// so linear blends produce coherent warm tones, never gray.
+			// No voronoi. Layout: [oct, decay, fmul, scale, w1, w2,
+			//   orbN, orbR, orbI, orbMode, fold, foldF, norm, diff, spec, specP, fres, edge,
+			//   ridge, waveStr, waveF,
+			//   sR,sG,sB, mR,mG,mB, bR,bG,bB, hR,hG,hB]
+			// All presets use 5 octaves and 7 orbs — integer uniforms are held constant
+			// to avoid discrete pops when blending. Detail and visibility are controlled
+			// via continuous params (fbm_decay, orb_intensity) instead.
+			const P = [
+				// 0: Flowing warp (fluid-amber) — heavy domain warp, edge glow, ridged veins
+				// Original: 5 oct, decay .48, freq 2.1, warp1=4.0, warp2=3.5
+				[5, .48, 2.10, .70, 3.2, 2.5,  7,.25,0,0, 0,2, 0,0,0,40,0, .6,
+				 .35, 0,2,
+				 .03,.025,.01, .20,.14,.07, .78,.58,.24, .95,.85,.50],
+				// 1: Orb field (chromatic-bloom) — orbs only, no noise/warp
+				// decay=.15 makes octaves 2-5 negligible (0.15^1=.15, .15^2=.02)
+				[5, .15, 2.0, .25, 0,0,  7,.30,1.5,1.0, 0,2, 0,0,0,40,0, 0,
+				 0, 0,2,
+				 .01,.008,.005, .04,.03,.02, .20,.15,.08, .80,.65,.35],
+				// 2: Silk folds (silk-cascade) — strong folds + Kajiya-Kay lighting
+				// decay=.30 keeps 2 effective octaves (0.30^2=.09 negligible)
+				[5, .30, 2.0, .50, .15,0,  7,.25,0,0, 1.0,3.0, 1.0,.75,.85,42,.15, 0,
+				 0, 0,2,
+				 .04,.025,.015, .35,.18,.10, .85,.55,.30, 1.0,.88,.65],
+				// 3: Ocean waves (bioluminescence) — wave interference + moderate warp
+				// decay=.42 gives 3 effective octaves
+				[5, .42, 2.03, .65, .8,.3,  7,.25,0,0, 0,2, .4,.25,0,40,0, 0,
+				 0, .8,3.0,
+				 .02,.025,.03, .08,.18,.15, .40,.60,.45, .90,.80,.55],
+			];
+
+			// Map preset array index to uniform buffer index (no voronoi)
+			const MAP = [
+				3, 10, 11, 12, 13, 14,       // fbm + warp
+				15, 16, 17, 18,                // orbs
+				19, 20, 21, 22, 23, 24, 25, 26, // fold + lighting + edge
+				29, 48, 49,                    // ridge, waves (skip voronoi)
+				32,33,34, 36,37,38, 40,41,42, 44,45,46 // colors
+			];
+
+			const N_PRESETS = P.length;
+			const N_PARAMS = MAP.length;
+
+			// Pre-allocate proximity array
+			const prox = new Float64Array(N_PRESETS);
 
 			function tick(now: number) {
-				const timeSec = (now - start) / 1000;
+				const timeSec = (now - start) / 2000; // half speed: everything runs at 50%
 
-				// Three master signals with contrast curve — spend time at 0 and 1,
-				// not stuck in the middle. Different speeds so they decorrelate.
-				const mWarp = driftBold(timeSec, 0.05, 1);  // warp dominance
-				const mOrbs = driftBold(timeSec, 0.038, 2); // orb dominance
-				const mFold = driftBold(timeSec, 0.03, 3);  // fold+lighting dominance
+				// Proximity signals — wide speed spread (2.3:1) decorrelates them
+				// so there's usually a clear winner. driftBold avoided: its steeper
+				// mid-range derivative causes perceptible jumps at leader crossings.
+				prox[0] = drift(timeSec, 0.018, 1);
+				prox[1] = drift(timeSec, 0.037, 2);
+				prox[2] = drift(timeSec, 0.025, 3);
+				prox[3] = drift(timeSec, 0.042, 5);
 
-				// When warp is dominant, suppress orbs and fold (and vice versa)
-				// This ensures distinct visual phases instead of everything at 50%
-				const warpFade = mWarp * (1.0 - 0.5 * mOrbs) * (1.0 - 0.5 * mFold);
-				const orbsFade = mOrbs * (1.0 - 0.5 * mWarp);
-				const foldFade = mFold * (1.0 - 0.5 * mWarp);
+				// Power-4 winner-take-all: ~80% weight on dominant attractor
+				// when there's a clear winner, graceful fallback when values cluster
+				let sum = 0.001;
+				for (let i = 0; i < N_PRESETS; i++) {
+					const p2 = prox[i] * prox[i];
+					prox[i] = p2 * p2;
+					sum += prox[i];
+				}
+				for (let i = 0; i < N_PRESETS; i++) { prox[i] /= sum; }
 
-				// FBM
-				buf[3]  = 2.0 + warpFade * 1.0;                  // octaves: 2-3
-				buf[10] = 0.48 + drift(timeSec, 0.03, 10) * 0.06;
-				buf[11] = 2.0 + drift(timeSec, 0.02, 11) * 0.1;
+				// Blend toward attractors
+				for (let j = 0; j < N_PARAMS; j++) {
+					let v = 0;
+					for (let i = 0; i < N_PRESETS; i++) { v += prox[i] * P[i][j]; }
+					v *= 1.0 + (drift(timeSec, 0.12, j + 60) - 0.5) * 0.06;
+					buf[MAP[j]] = v;
+				}
 
-				// Warp: scale LOW when warp HIGH → big shapes
-				buf[12] = 0.5 + (1.0 - warpFade) * 0.6;         // scale: 0.5-1.1
-				buf[13] = 0.3 + warpFade * 4.0;                  // warp1: 0.3-4.3
-				buf[14] = warpFade * 3.0;                         // warp2: 0-3.0
-
-				// Orbs
-				buf[15] = orbsFade * 6.0;                         // count: 0-6
-				buf[16] = 0.20 + orbsFade * 0.15;                // radius: 0.20-0.35
-				buf[17] = orbsFade * 1.2;                         // intensity: 0-1.2
-				buf[18] = orbsFade * 0.85;                        // color_mode: 0-0.85
-
-				// Fold + lighting
-				buf[19] = foldFade * 0.9;                         // fold_str: 0-0.9
-				buf[20] = 2.0 + foldFade * 1.5;                  // fold_freq: 2-3.5
-				buf[21] = foldFade * 0.9;                         // normal_str: 0-0.9
-				buf[22] = foldFade * 0.7;                         // diffuse_str: 0-0.7
-				buf[23] = foldFade * 0.8;                         // spec_str: 0-0.8
-				buf[24] = 30.0 + foldFade * 30.0;                // spec_power: 30-60
-				buf[25] = foldFade * 0.2;                         // fresnel: 0-0.2
-
-				// Edge glow: warp + not orbs
-				buf[26] = warpFade * (1.0 - orbsFade) * 0.6;
+				// Voronoi always off
+				buf[30] = 0; buf[31] = 4;
 
 				buf[27] = 0.4;
 				buf[28] = 0.012;
 
-				// Colors: three distinct palettes blended by dominance
-				// Warp → deep teal/cyan, Orbs → violet/blue, Fold → magenta/rose
-				const w = warpFade, o = orbsFade, f = foldFade;
-				const total = Math.max(w + o + f, 0.01);
-				const nw = w / total, no = o / total, nf = f / total;
-
-				// Shadow
-				buf[32] = nw * 0.02 + no * 0.02 + nf * 0.04;
-				buf[33] = nw * 0.04 + no * 0.01 + nf * 0.01;
-				buf[34] = nw * 0.05 + no * 0.04 + nf * 0.03;
-				// Mid
-				buf[36] = nw * 0.05 + no * 0.12 + nf * 0.35;
-				buf[37] = nw * 0.18 + no * 0.06 + nf * 0.08;
-				buf[38] = nw * 0.22 + no * 0.30 + nf * 0.18;
-				// Bright
-				buf[40] = nw * 0.15 + no * 0.45 + nf * 0.85;
-				buf[41] = nw * 0.65 + no * 0.30 + nf * 0.35;
-				buf[42] = nw * 0.60 + no * 0.80 + nf * 0.55;
-				// Hot
-				buf[44] = nw * 0.40 + no * 0.70 + nf * 1.00;
-				buf[45] = nw * 0.90 + no * 0.55 + nf * 0.70;
-				buf[46] = nw * 0.85 + no * 0.95 + nf * 0.80;
-
 				// Per-frame uniforms
 				buf[U_TIME] = timeSec;
-				// Continuous slow zoom in (resets periodically to avoid precision loss)
-				const zoomCycle = (timeSec * 0.008) % 1.0; // 0→1 over ~125s
-				buf[U_ZOOM] = 1.0 + zoomCycle * 0.4; // 1.0→1.4
+				// Zoom: sine-based oscillation, no modulo discontinuity
+				buf[U_ZOOM] = 1.0 + (0.5 + 0.5 * Math.sin(timeSec * 0.05)) * 0.3;
 				buf[U_HUE_SHIFT] = (timeSec / HUE_CYCLE_S) * Math.PI * 2;
 
-				resize();
 				buf[U_RES_X] = cw;
 				buf[U_RES_Y] = ch;
 				buf[U_MOUSE_X] = mouseX * dpr;
@@ -192,6 +208,7 @@
 
 		return () => {
 			cancelAnimationFrame(raf);
+			if (onResize) window.removeEventListener('resize', onResize);
 			engine?.destroy();
 		};
 	});

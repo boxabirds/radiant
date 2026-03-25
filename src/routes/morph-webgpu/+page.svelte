@@ -76,6 +76,11 @@
 		let engine: MorphEngine | null = null;
 		let onResize: (() => void) | null = null;
 
+		// Shared snap canvas: morph writes here after each render, rain reads from it.
+		// Bridges WebGPU → WebGL without cross-context timing issues.
+		const morphSnap = document.createElement('canvas');
+		const morphSnapCtx = morphSnap.getContext('2d')!;
+
 		(async () => {
 			try {
 				engine = await MorphEngine.create(canvas!);
@@ -241,6 +246,12 @@
 
 				audio?.update(buf);
 				engine!.render(buf);
+				// Snap morph frame for rain refraction (same rAF = guaranteed content)
+				if (morphSnap.width !== canvas!.width || morphSnap.height !== canvas!.height) {
+					morphSnap.width  = canvas!.width;
+					morphSnap.height = canvas!.height;
+				}
+				morphSnapCtx.drawImage(canvas!, 0, 0);
 
 				// Debug HUD: update every 30 frames to avoid reactive overhead
 				if (showDebug && ++debugFrameCount >= 30) {
@@ -610,10 +621,7 @@
 			}
 
 			// ── WebGL refraction renderer ──
-			// Refracts the morph canvas through the drop normal map.
-			// Snap canvas bridges WebGPU → WebGL (drawImage reads GPU canvas content).
-			const snapCanvas = mkCanvas(2, 2);
-			const snapCtx = snapCanvas.getContext('2d', { willReadFrequently: false })!;
+			// Refracts morphSnap (written by morph's own rAF) through the drop normal map.
 
 			const gl = rc.getContext('webgl', { alpha: true, antialias: false, premultipliedAlpha: false })!;
 
@@ -697,8 +705,6 @@
 				rc.width  = innerWidth;
 				rc.height = innerHeight;
 				gl.viewport(0, 0, rc.width, rc.height);
-				snapCanvas.width  = rc.width;
-				snapCanvas.height = rc.height;
 				initRd(rc.width, rc.height, 1);
 			}
 			resizeRain();
@@ -717,10 +723,6 @@
 				rdLastRender = now;
 				updateDrops(ts);
 
-				// Bridge WebGPU → WebGL: draw morph canvas into 2D snap, upload snap as texture.
-				// drawImage on a WebGPU canvas reads the last presented frame.
-				snapCtx.drawImage(canvas!, 0, 0, rc.width, rc.height);
-
 				// Upload water map (drop normal map)
 				gl.activeTexture(gl.TEXTURE0);
 				gl.bindTexture(gl.TEXTURE_2D, waterTex);
@@ -729,7 +731,8 @@
 				// Upload morph snapshot as fg texture (sampled through drop lens)
 				gl.activeTexture(gl.TEXTURE1);
 				gl.bindTexture(gl.TEXTURE_2D, fgTex);
-				gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, snapCanvas);
+				if (morphSnap.width > 1)
+					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, morphSnap);
 
 				// Uniforms
 				gl.useProgram(prog);

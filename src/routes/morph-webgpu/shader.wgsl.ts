@@ -55,8 +55,13 @@ struct Uniforms {
 
   kaleido_str: f32,     // 0=off, >0.3 activates fold
   kaleido_seg: f32,     // segment count (4-12)
+  chroma_str: f32,      // 0=off, chromatic aberration strength
+  chladni_str: f32,     // 0=off, 1=full chladni pattern
+
+  chladni_mode: f32,    // 0-5 selects mode pair (interpolated)
   _pad1: f32,
   _pad2: f32,
+  _pad3: f32,
 };
 
 @group(0) @binding(0) var<uniform> u: Uniforms;
@@ -289,6 +294,33 @@ fn kaleido_fold(p: vec2f) -> vec2f {
   return vec2f(cos(a), sin(a)) * r;
 }
 
+// ─── Chladni modes ───
+// Standing-wave eigenfunctions: cos(nπx)cos(mπy) + cos(mπx)cos(nπy).
+// Sand accumulates on nodal lines where field ≈ 0.
+// 6 mode pairs interpolated by chladni_mode (0-5).
+fn chladni_field(p: vec2f, t: f32) -> f32 {
+  let PI = 3.14159265;
+  // Mode pairs (n,m): increasing complexity
+  let modes = array<vec2f, 6>(
+    vec2f(1, 2), vec2f(2, 3), vec2f(3, 4),
+    vec2f(4, 5), vec2f(3, 7), vec2f(5, 6)
+  );
+  let idx = clamp(u.chladni_mode, 0.0, 4.99);
+  let i0 = i32(idx);
+  let i1 = min(i0 + 1, 5);
+  let frac = idx - f32(i0);
+  let m0 = modes[i0]; let m1 = modes[i1];
+  // Chladni: cos(nπx)cos(mπy) + cos(mπx)cos(nπy)
+  let sp = p * 2.5 + vec2f(sin(t * 0.07), cos(t * 0.09)) * 0.3; // slow drift
+  let c0 = cos(m0.x * PI * sp.x) * cos(m0.y * PI * sp.y)
+         + cos(m0.y * PI * sp.x) * cos(m0.x * PI * sp.y);
+  let c1 = cos(m1.x * PI * sp.x) * cos(m1.y * PI * sp.y)
+         + cos(m1.y * PI * sp.x) * cos(m1.x * PI * sp.y);
+  let pattern = mix(c0, c1, frac);
+  // Nodal lines: field near 0 → bright sand. Invert so sand = high.
+  return 1.0 - smoothstep(0.0, 0.15, abs(pattern));
+}
+
 // ─── Spiral field ───
 // Log-spiral distance field. Tightness hardcoded to 0.18.
 fn spiral_field(p: vec2f, t: f32) -> f32 {
@@ -349,12 +381,11 @@ fn fs(@builtin(position) frag_coord: vec4f) -> @location(0) vec4f {
   }
 
   // ── Build the field ──
-  // Kaleidoscope: binary switch (not mix) to avoid seams at fold boundaries.
-  // select() evaluates both but picks one — no coordinate interpolation artifacts.
-  let kp = select(p, kaleido_fold(p), u.kaleido_str > 0.3);
+  // Kaleidoscope: binary switch. Smooth transition would require double
+  // warped_field evaluation (2x GPU cost) which saturates the GPU.
+  // The snap is brief and happens during transitions when things are changing.
+  let kp = select(p, kaleido_fold(p), u.kaleido_str > 0.4);
   let wp = kp * u.warp_scale;
-
-  // Domain-warped noise field
   var field = warped_field(wp, t);
 
   // Ridged noise: fold field into vein patterns
@@ -362,6 +393,10 @@ fn fs(@builtin(position) frag_coord: vec4f) -> @location(0) vec4f {
 
   // Wave interference: undulation added to field height
   field += wave_field(p, t) * u.wave_str;
+
+  // Chladni modes: cymatics standing-wave patterns
+  let chladni_gate = smoothstep(0.3, 0.6, u.chladni_str);
+  field += chladni_field(p, t) * chladni_gate;
 
   // Spiral arms: log-spiral distance field
   let spiral_gate = smoothstep(0.3, 0.6, u.spiral_str);
@@ -491,6 +526,11 @@ fn fs(@builtin(position) frag_coord: vec4f) -> @location(0) vec4f {
   // Tone map (ACES)
   col = clamp(col, vec3f(0.0), vec3f(4.0));
   col = col * (2.51 * col + 0.03) / (col * (2.43 * col + 0.59) + 0.14);
+
+  // Chromatic aberration: radial RGB split. R shifts warm toward edges,
+  // B shifts cool. When chroma_str=0, multiplier is (1,1,1) = no-op.
+  let chroma_d = length(p) * u.chroma_str;
+  col *= vec3f(1.0 + chroma_d * 0.25, 1.0, 1.0 - chroma_d * 0.2);
 
   // Grain
   let grain = fract(sin(dot(frag_coord.xy + fract(u.time * 7.13) * 100.0, vec2f(12.9898, 78.233))) * 43758.5453) - 0.5;

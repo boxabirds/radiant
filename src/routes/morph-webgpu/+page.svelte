@@ -23,6 +23,9 @@
 	let supported = $state(true);
 	let audio: MorphAudio | null = null;
 	let audioLoading = false;
+	let showDebug = $state(false);
+	let fpsText = $state('');
+	let dominantPreset = $state('');
 
 	// Grid-free drift using incommensurate sine sums.
 	// No cell boundaries, infinitely smooth derivatives, zero discontinuities.
@@ -112,44 +115,48 @@
 			//   ridge, waveStr, waveF,
 			//   sR,sG,sB, mR,mG,mB, bR,bG,bB, hR,hG,hB,
 			//   orbSharp, moireStr, burnStr, burnSpeed, spiralStr, spiralArms,
-			//   kaleidoStr, kaleidoSeg]
+			//   kaleidoStr, kaleidoSeg, chromaStr, chladniStr, chladniMode]
 			const P = [
 				// 0: Flowing warp (fluid-amber)
 				[3, .48, 2.10, .70, 3.2, 2.5,  7,.25,0,0, 0,2, 0,0,0,40,0, .6,
 				 .35, 0,2,
-				 .03,.025,.01, .20,.14,.07, .78,.58,.24, .95,.85,.50, 0,0, 0,.5, 0,5, 0,8],
+				 .03,.025,.01, .20,.14,.07, .78,.58,.24, .95,.85,.50, 0,0, 0,.5, 0,5, 0,8, 0, 0,3],
 				// 1: Orb field (chromatic-bloom)
 				[3, .15, 2.0, .25, 0,0,  7,.30,1.5,1.0, 0,2, 0,0,0,40,0, 0,
 				 0, 0,2,
-				 .01,.008,.005, .04,.03,.02, .20,.15,.08, .80,.65,.35, 0,0, 0,.5, 0,5, 0,8],
+				 .01,.008,.005, .04,.03,.02, .20,.15,.08, .80,.65,.35, 0,0, 0,.5, 0,5, 0,8, .15, 0,3],
 				// 2: Silk folds (silk-cascade)
 				[3, .30, 2.0, .50, .15,0,  7,.25,0,0, 1.0,3.0, 1.0,.75,.85,42,.15, 0,
 				 0, 0,2,
-				 .04,.025,.015, .35,.18,.10, .85,.55,.30, 1.0,.88,.65, 0,0, 0,.5, 0,5, 0,8],
+				 .04,.025,.015, .35,.18,.10, .85,.55,.30, 1.0,.88,.65, 0,0, 0,.5, 0,5, 0,8, 0, 0,3],
 				// 3: Ocean waves (bioluminescence)
 				[3, .42, 2.03, .65, .8,.3,  7,.25,0,0, 0,2, .4,.25,0,40,0, 0,
 				 0, .8,3.0,
-				 .02,.025,.03, .08,.18,.15, .40,.60,.45, .90,.80,.55, 0,0, 0,.5, 0,5, 0,8],
+				 .02,.025,.03, .08,.18,.15, .40,.60,.45, .90,.80,.55, 0,0, 0,.5, 0,5, 0,8, 0, 0,3],
 				// 4: Neon metaballs (neon-drip)
 				[3, .15, 2.0, .30, 0,0,  7,.28,1.8,1.0, 0,2, 0,0,0,40,0, 0,
 				 0, 0,2,
-				 .005,.005,.01, .03,.02,.06, .15,.08,.30, .90,.50,.80, 1.0,0, 0,.5, 0,5, 0,8],
+				 .005,.005,.01, .03,.02,.06, .15,.08,.30, .90,.50,.80, 1.0,0, 0,.5, 0,5, 0,8, .2, 0,3],
 				// 5: Moiré beats (moire-interference)
 				[3, .15, 2.0, .40, 0,0,  7,.25,0,0, 0,2, 0,0,0,40,0, 0,
 				 0, 0,2,
-				 .01,.01,.008, .08,.06,.04, .50,.35,.15, .85,.75,.40, 0,1.0, 0,.5, 0,5, 0,8],
+				 .01,.01,.008, .08,.06,.04, .50,.35,.15, .85,.75,.40, 0,1.0, 0,.5, 0,5, 0,8, .1, 0,3],
 				// 6: Burning film (burning-film)
 				[3, .48, 2.10, .65, 2.5,1.8,  7,.25,0,0, 0,2, 0,0,0,40,0, .8,
 				 .4, 0,2,
-				 .02,.01,.005, .25,.10,.03, .80,.45,.12, 1.0,.85,.40, 0,0, 1.0,.4, 0,5, 0,8],
+				 .02,.01,.005, .25,.10,.03, .80,.45,.12, 1.0,.85,.40, 0,0, 1.0,.4, 0,5, 0,8, 0, 0,3],
 				// 7: Spiral vortex (vortex)
 				[3, .42, 2.05, .55, 1.0,.5,  7,.25,0,0, 0,2, 0,0,0,40,0, .2,
 				 0, 0,2,
-				 .02,.015,.008, .12,.08,.04, .55,.40,.18, .90,.75,.40, 0,0, 0,.5, 1.0,5, 0,8],
+				 .02,.015,.008, .12,.08,.04, .55,.40,.18, .90,.75,.40, 0,0, 0,.5, 1.0,5, 0,8, 0, 0,3],
 				// 8: Kaleidoscope mandala (kaleidoscope-runway)
 				[3, .40, 2.05, .60, 1.5,.8,  7,.25,0,0, 0,2, 0,0,0,40,0, .3,
 				 .2, 0,2,
-				 .02,.015,.01, .15,.10,.06, .65,.45,.20, .95,.80,.45, 0,0, 0,.5, 0,5, 1.0,8],
+				 .02,.015,.01, .15,.10,.06, .65,.45,.20, .95,.80,.45, 0,0, 0,.5, 0,5, 1.0,8, 0, 0,3],
+				// 9: Chladni cymatics (chladni-resonance)
+				[3, .15, 2.0, .40, 0,0,  7,.25,0,0, 0,2, 0,0,0,40,0, .2,
+				 0, 0,2,
+				 .01,.01,.008, .06,.05,.04, .45,.35,.20, .90,.80,.50, 0,0, 0,.5, 0,5, 0,8, 0, 1.0,3],
 			];
 
 			// Map preset array index to uniform buffer index (no voronoi)
@@ -159,17 +166,24 @@
 				19, 20, 21, 22, 23, 24, 25, 26, // fold + lighting + edge
 				29, 48, 49,                    // ridge, waves (skip voronoi)
 				32,33,34, 36,37,38, 40,41,42, 44,45,46, // colors
-				50, 51, 52, 53, 54, 55, 56, 57  // orb_sharp, moire, burn, spiral, kaleido
+				50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60 // t2+t3 params
 			];
 
 			const N_PRESETS = P.length;
 			const N_PARAMS = MAP.length;
+			const PRESET_NAMES = [
+				'fluid-amber', 'chromatic-bloom', 'silk-cascade', 'bioluminescence',
+				'neon-drip', 'moiré', 'burning-film', 'vortex', 'kaleidoscope', 'chladni'
+			];
 
 			// Pre-allocate proximity array
 			const prox = new Float64Array(N_PRESETS);
 
+			// Debug HUD frame counter
+			let debugFrameCount = 0;
+
 			function tick(now: number) {
-				const timeSec = (now - start) / 2000; // half speed: everything runs at 50%
+				const timeSec = (now - start) / 4000; // quarter speed
 
 				// Proximity signals
 				prox[0] = drift(timeSec, 0.018, 1);
@@ -179,6 +193,7 @@
 				prox[6] = drift(timeSec, 0.039, 19);
 				prox[7] = drift(timeSec, 0.033, 23);
 				prox[8] = drift(timeSec, 0.015, 29);
+				prox[9] = drift(timeSec, 0.035, 31);
 				prox[2] = drift(timeSec, 0.025, 3);
 				prox[3] = drift(timeSec, 0.042, 5);
 
@@ -224,6 +239,17 @@
 
 				audio?.update(buf);
 				engine!.render(buf);
+
+				// Debug HUD: update every 30 frames to avoid reactive overhead
+				if (showDebug && ++debugFrameCount >= 30) {
+					debugFrameCount = 0;
+					let maxW = 0, maxI = 0;
+					for (let i = 0; i < N_PRESETS; i++) {
+						if (prox[i] > maxW) { maxW = prox[i]; maxI = i; }
+					}
+					fpsText = `${engine!.gpuFps} gpu fps`;
+					dominantPreset = `${PRESET_NAMES[maxI]} ${Math.round(maxW * 100)}%`;
+				}
 				raf = requestAnimationFrame(tick);
 			}
 
@@ -250,6 +276,8 @@
 				audio?.volumeUp();
 			} else if (e.key === '-' || e.key === '_') {
 				audio?.volumeDown();
+			} else if (e.key === 'd') {
+				showDebug = !showDebug;
 			}
 		}
 		window.addEventListener('keydown', handleKey);
@@ -287,6 +315,13 @@
 {/if}
 
 <canvas class="gl-canvas" bind:this={canvas}></canvas>
+
+{#if showDebug}
+	<div class="debug-hud">
+		<span>{fpsText}</span>
+		<span>{dominantPreset}</span>
+	</div>
+{/if}
 
 <div class="morph-ui">
 	<a href="/gallery/all" class="close-btn" aria-label="Close">
@@ -351,5 +386,18 @@
 	.close-btn:hover {
 		color: rgba(232, 224, 216, 0.9);
 		background: rgba(10, 10, 10, 0.8);
+	}
+
+	.debug-hud {
+		position: fixed;
+		bottom: 16px;
+		left: 16px;
+		z-index: 10001;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		font: 11px/1.3 monospace;
+		color: rgba(232, 224, 216, 0.5);
+		pointer-events: none;
 	}
 </style>

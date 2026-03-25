@@ -1,7 +1,7 @@
 /**
  * Presets as flat Float32Arrays for zero-allocation GPU upload.
  *
- * Layout matches the WGSL uniform struct exactly (240 bytes / 60 floats):
+ * Layout matches the WGSL uniform struct exactly (256 bytes / 64 floats):
  *
  *  0: time           1: zoom           2: hue_shift      3: fbm_octaves
  *  4: res.x          5: res.y          6: mouse.x        7: mouse.y
@@ -17,10 +17,11 @@
  * 44-47: color_hot (vec4)
  * 48: wave_str      49: wave_freq     50: orb_sharpness  51: moire_str
  * 52: burn_str      53: burn_speed    54: spiral_str      55: spiral_arms
- * 56: kaleido_str   57: kaleido_seg   58: _pad             59: _pad
+ * 56: kaleido_str   57: kaleido_seg   58: chroma_str      59: chladni_str
+ * 60: chladni_mode  61: _pad          62: _pad            63: _pad
  */
 
-export const UNIFORM_FLOATS = 60;
+export const UNIFORM_FLOATS = 64;
 export const UNIFORM_BYTES = UNIFORM_FLOATS * 4;
 
 // Indices for per-frame uniforms (set by JS each frame)

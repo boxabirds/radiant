@@ -74,6 +74,13 @@ export class MorphEngine {
 		return new MorphEngine(device, context, uniformBuffer, renderBundle, format);
 	}
 
+	// GPU frame completion tracking
+	private _gpuFrames = 0;
+	private _gpuFpsTime = 0;
+	private _gpuFps = 0;
+
+	get gpuFps(): number { return this._gpuFps; }
+
 	render(uniforms: Float32Array): void {
 		this.device.queue.writeBuffer(this.uniformBuffer, 0, uniforms);
 
@@ -89,6 +96,17 @@ export class MorphEngine {
 		pass.executeBundles([this.renderBundle]);
 		pass.end();
 		this.device.queue.submit([encoder.finish()]);
+
+		// Count actual GPU completions per second
+		this.device.queue.onSubmittedWorkDone().then(() => {
+			this._gpuFrames++;
+			const now = performance.now();
+			if (now - this._gpuFpsTime > 1000) {
+				this._gpuFps = this._gpuFrames;
+				this._gpuFrames = 0;
+				this._gpuFpsTime = now;
+			}
+		});
 	}
 
 	destroy(): void {

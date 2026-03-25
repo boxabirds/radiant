@@ -764,8 +764,8 @@
 				// Uniforms
 				gl.useProgram(prog);
 				gl.uniform2f(uLoc.resolution,      rc.width, rc.height);
-				gl.uniform1f(uLoc.minRefraction,    256.0);
-				gl.uniform1f(uLoc.refractionDelta,  256.0);
+				gl.uniform1f(uLoc.minRefraction,    716.8); // 256 * 2.8 (max refraction)
+				gl.uniform1f(uLoc.refractionDelta,  716.8);
 				gl.uniform1f(uLoc.brightness,       1.04);
 				gl.uniform1f(uLoc.alphaMultiply,    6.0);
 				gl.uniform1f(uLoc.alphaSubtract,    3.0);

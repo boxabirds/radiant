@@ -18,6 +18,7 @@
 	const AUDIO_URL = '/audio/the-noble-hunt.mp3';
 
 	let canvas: HTMLCanvasElement | undefined = $state();
+	let rainCanvas: HTMLCanvasElement | undefined = $state(); // rain overlay
 	let mouseX = 0;
 	let mouseY = 0;
 	let supported = $state(true);
@@ -283,8 +284,110 @@
 		}
 		window.addEventListener('keydown', handleKey);
 
+		// ── Rain overlay ────────────────────────────────────────────────────────
+		// Self-contained Canvas 2D rain sim. Delete this block + rainCanvas
+		// binding + the <canvas class="rain-canvas"> element to remove it.
+		let rainRaf = 0;
+		if (rainCanvas) {
+			const rc = rainCanvas;
+			const rctx = rc.getContext('2d')!;
+
+			const DROP_COUNT = 80;
+			const TRAIL_COUNT = 180;
+
+			type Drop = {
+				x: number; y: number; vy: number;
+				w: number; h: number; alpha: number;
+				trail: boolean;
+			};
+
+			function makeDrop(trail: boolean, w: number, h: number): Drop {
+				const size = trail
+					? 2 + Math.random() * 6
+					: 8 + Math.random() * 20;
+				return {
+					x: Math.random() * w,
+					y: Math.random() * h,
+					vy: trail ? 40 + Math.random() * 80 : 20 + Math.random() * 50,
+					w: size * 0.55,
+					h: size,
+					alpha: trail ? 0.06 + Math.random() * 0.12 : 0.10 + Math.random() * 0.18,
+					trail,
+				};
+			}
+
+			function resizeRain() {
+				rc.width  = innerWidth;
+				rc.height = innerHeight;
+			}
+			resizeRain();
+			window.addEventListener('resize', resizeRain);
+
+			const drops: Drop[] = [
+				...Array.from({ length: DROP_COUNT  }, () => makeDrop(false, rc.width, rc.height)),
+				...Array.from({ length: TRAIL_COUNT }, () => makeDrop(true,  rc.width, rc.height)),
+			];
+
+			let lastRainTime = performance.now();
+
+			function drawDrop(ctx: CanvasRenderingContext2D, d: Drop) {
+				ctx.save();
+				ctx.translate(d.x, d.y);
+				// Teardrop: narrow at top, widest ~65% down, pinches again at bottom
+				ctx.beginPath();
+				ctx.moveTo(0, -d.h * 0.5);
+				ctx.bezierCurveTo(
+					 d.w * 0.6, -d.h * 0.2,
+					 d.w,        d.h * 0.35,
+					 0,          d.h * 0.5
+				);
+				ctx.bezierCurveTo(
+					-d.w,        d.h * 0.35,
+					-d.w * 0.6, -d.h * 0.2,
+					 0,         -d.h * 0.5
+				);
+				ctx.closePath();
+
+				const grad = ctx.createLinearGradient(0, -d.h * 0.5, 0, d.h * 0.5);
+				grad.addColorStop(0,   `rgba(255,255,255,${d.alpha * 1.4})`);
+				grad.addColorStop(0.3, `rgba(220,230,255,${d.alpha})`);
+				grad.addColorStop(1,   `rgba(180,200,255,${d.alpha * 0.3})`);
+				ctx.fillStyle = grad;
+				ctx.fill();
+
+				// Specular highlight
+				if (!d.trail) {
+					ctx.beginPath();
+					ctx.ellipse(-d.w * 0.2, -d.h * 0.25, d.w * 0.2, d.h * 0.12, -0.3, 0, Math.PI * 2);
+					ctx.fillStyle = `rgba(255,255,255,${d.alpha * 1.2})`;
+					ctx.fill();
+				}
+				ctx.restore();
+			}
+
+			function tickRain(now: number) {
+				rainRaf = requestAnimationFrame(tickRain);
+				const dt = Math.min((now - lastRainTime) / 1000, 0.05);
+				lastRainTime = now;
+
+				rctx.clearRect(0, 0, rc.width, rc.height);
+
+				for (const d of drops) {
+					d.y += d.vy * dt;
+					if (d.y - d.h > rc.height) {
+						Object.assign(d, makeDrop(d.trail, rc.width, rc.height));
+						d.y = -d.h;
+					}
+					drawDrop(rctx, d);
+				}
+			}
+			rainRaf = requestAnimationFrame(tickRain);
+		}
+		// ── End rain overlay ─────────────────────────────────────────────────
+
 		return () => {
 			cancelAnimationFrame(raf);
+			cancelAnimationFrame(rainRaf);
 			window.removeEventListener('keydown', handleKey);
 			if (onResize) window.removeEventListener('resize', onResize);
 			audio?.destroy();
@@ -316,6 +419,7 @@
 {/if}
 
 <canvas class="gl-canvas" bind:this={canvas}></canvas>
+<canvas class="rain-canvas" bind:this={rainCanvas}></canvas>
 
 {#if showDebug}
 	<div class="debug-hud">
@@ -387,6 +491,15 @@
 	.close-btn:hover {
 		color: rgba(232, 224, 216, 0.9);
 		background: rgba(10, 10, 10, 0.8);
+	}
+
+	.rain-canvas {
+		position: fixed;
+		inset: 0;
+		width: 100vw;
+		height: 100vh;
+		z-index: 10000;
+		pointer-events: none;
 	}
 
 	.debug-hud {

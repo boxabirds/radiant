@@ -858,11 +858,11 @@
 	</div>
 {/if}
 
-<nav class="attribution">
+<div class="attribution">
 	<a href="https://github.com/boxabirds/radiant" target="_blank" rel="noopener">By Julian Harris</a>
 	<span class="sep">|</span>
 	<a href="https://radiant-shaders.com" target="_blank" rel="noopener">Based on Radiant</a>
-</nav>
+</div>
 <div class="key-guide">
 	<span><kbd>f</kbd> fade</span>
 	<span class="sep">·</span>

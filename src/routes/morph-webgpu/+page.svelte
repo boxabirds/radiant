@@ -864,6 +864,13 @@
 		<span class="sep">|</span>
 		<a href="https://radiant-shaders.com" target="_blank" rel="noopener">Based on Radiant</a>
 	</nav>
+	<div class="key-guide">
+		<span><kbd>f</kbd> fade</span>
+		<span class="sep">·</span>
+		<span><kbd>space</kbd> sound</span>
+		<span class="sep">·</span>
+		<span><kbd>-</kbd><kbd>=</kbd> volume</span>
+	</div>
 </div>
 
 <style>
@@ -933,6 +940,41 @@
 	.attribution a:hover { color: rgba(232, 224, 216, 0.9); }
 
 	.attribution .sep { opacity: 0.35; }
+
+	.key-guide {
+		position: fixed;
+		bottom: 20px;
+		left: 50%;
+		transform: translateX(-50%);
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		font-size: 11px;
+		font-weight: 300;
+		letter-spacing: 0.04em;
+		color: rgba(232, 224, 216, 0.4);
+		background: rgba(10, 10, 10, 0.4);
+		padding: 5px 14px;
+		border-radius: 20px;
+		white-space: nowrap;
+		opacity: 1;
+		transition: opacity 0.4s ease;
+	}
+
+	:global(body.cursor-hidden) .key-guide {
+		opacity: 0;
+	}
+
+	.key-guide kbd {
+		font-family: inherit;
+		font-size: 10px;
+		background: rgba(232, 224, 216, 0.12);
+		border: 1px solid rgba(232, 224, 216, 0.15);
+		border-radius: 4px;
+		padding: 1px 5px;
+	}
+
+	.key-guide .sep { opacity: 0.3; }
 
 	.rain-canvas {
 		position: fixed;

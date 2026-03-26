@@ -352,28 +352,29 @@ class RadiantScreenSaverView: ScreenSaverView {
         tbuf[4] = Float(drawW)
         tbuf[5] = Float(drawH)
 
-        // ── Single command buffer for all passes ──
+        let currentIdx = currentShaderIndex
         guard let commandBuffer = commandQueue.makeCommandBuffer() else { return }
 
-        // Pass 1: Render current shader → textureA
-        let currentIdx = currentShaderIndex
-        if currentIdx < shaderPipelines.count {
-            let passA = MTLRenderPassDescriptor()
-            passA.colorAttachments[0].texture = texA
-            passA.colorAttachments[0].loadAction = .clear
-            passA.colorAttachments[0].storeAction = .store
-            passA.colorAttachments[0].clearColor = MTLClearColor(red: 0.04, green: 0.04, blue: 0.04, alpha: 1.0)
-
-            if let enc = commandBuffer.makeRenderCommandEncoder(descriptor: passA) {
-                enc.setRenderPipelineState(shaderPipelines[currentIdx])
-                enc.setFragmentBuffer(uniformBuffer, offset: 0, index: 0)
-                enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
-                enc.endEncoding()
-            }
-        }
-
-        // Pass 2 (morph only): Render next shader → textureB
         if isMorphing {
+            // ── MORPH: render both shaders to offscreen, composite to drawable ──
+
+            // Pass 1: current → textureA
+            if currentIdx < shaderPipelines.count {
+                let passA = MTLRenderPassDescriptor()
+                passA.colorAttachments[0].texture = texA
+                passA.colorAttachments[0].loadAction = .clear
+                passA.colorAttachments[0].storeAction = .store
+                passA.colorAttachments[0].clearColor = MTLClearColor(red: 0.04, green: 0.04, blue: 0.04, alpha: 1.0)
+
+                if let enc = commandBuffer.makeRenderCommandEncoder(descriptor: passA) {
+                    enc.setRenderPipelineState(shaderPipelines[currentIdx])
+                    enc.setFragmentBuffer(uniformBuffer, offset: 0, index: 0)
+                    enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                    enc.endEncoding()
+                }
+            }
+
+            // Pass 2: next → textureB
             let nextIdx = nextShaderIndex
             if nextIdx < shaderPipelines.count {
                 let passB = MTLRenderPassDescriptor()
@@ -389,29 +390,44 @@ class RadiantScreenSaverView: ScreenSaverView {
                     enc.endEncoding()
                 }
             }
-        }
 
-        // Pass 3: Composite textureA + textureB → drawable
-        let passC = MTLRenderPassDescriptor()
-        passC.colorAttachments[0].texture = drawable.texture
-        passC.colorAttachments[0].loadAction = .dontCare
-        passC.colorAttachments[0].storeAction = .store
+            // Pass 3: composite → drawable
+            let passC = MTLRenderPassDescriptor()
+            passC.colorAttachments[0].texture = drawable.texture
+            passC.colorAttachments[0].loadAction = .dontCare
+            passC.colorAttachments[0].storeAction = .store
 
-        if let enc = commandBuffer.makeRenderCommandEncoder(descriptor: passC) {
-            enc.setRenderPipelineState(transitionPipeline)
-            enc.setFragmentBuffer(transitionUniformBuffer, offset: 0, index: 0)
-            enc.setFragmentTexture(texA, index: 0)
-            enc.setFragmentTexture(texB, index: 1)
-            enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
-            enc.endEncoding()
+            if let enc = commandBuffer.makeRenderCommandEncoder(descriptor: passC) {
+                enc.setRenderPipelineState(transitionPipeline)
+                enc.setFragmentBuffer(transitionUniformBuffer, offset: 0, index: 0)
+                enc.setFragmentTexture(texA, index: 0)
+                enc.setFragmentTexture(texB, index: 1)
+                enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                enc.endEncoding()
+            }
+        } else {
+            // ── DWELL: render directly to drawable — single pass, no offscreen ──
+            if currentIdx < shaderPipelines.count {
+                let pass = MTLRenderPassDescriptor()
+                pass.colorAttachments[0].texture = drawable.texture
+                pass.colorAttachments[0].loadAction = .clear
+                pass.colorAttachments[0].storeAction = .store
+                pass.colorAttachments[0].clearColor = MTLClearColor(red: 0.04, green: 0.04, blue: 0.04, alpha: 1.0)
+
+                if let enc = commandBuffer.makeRenderCommandEncoder(descriptor: pass) {
+                    enc.setRenderPipelineState(shaderPipelines[currentIdx])
+                    enc.setFragmentBuffer(uniformBuffer, offset: 0, index: 0)
+                    enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                    enc.endEncoding()
+                }
+            }
         }
 
         commandBuffer.present(drawable)
         commandBuffer.commit()
 
         if frameCount <= 3 || frameCount % 300 == 0 {
-            let shaderName = currentIdx < shaderRegistry.count ? shaderRegistry[currentIdx].title : "?"
-            sslog("frame=\(frameCount) shader=\(shaderName) phase=\(phase) drawSize=\(drawW)x\(drawH)")
+            sslog("frame=\(frameCount) phase=\(phase) drawSize=\(drawW)x\(drawH)")
         }
     }
 

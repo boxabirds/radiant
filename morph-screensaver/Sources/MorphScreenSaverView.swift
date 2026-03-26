@@ -1,6 +1,7 @@
 import ScreenSaver
 import Metal
 import QuartzCore
+import CoreVideo
 
 // MARK: - Constants
 
@@ -25,9 +26,13 @@ private let COLOUR_VAR_CYCLE_S: Float = 20.0
 private let KALEIDO_RAMP_TIME: Float = 15.0 // timeSec units (= 60 real seconds)
 private let TIME_DIVISOR: Double = 4000.0 // quarter speed: elapsed_ms / 4000
 
+// Render at half resolution for 4× fewer fragment invocations.
+// CAMetalLayer bilinear upscales to the display — imperceptible on smooth noise fields.
+private let RESOLUTION_SCALE: CGFloat = 0.5
+
 // MARK: - Preset data
 
-// 4 presets, each 43 floats. Layout:
+// 10 presets, each 43 floats. Layout:
 // [oct, decay, fmul, scale, w1, w2,
 //  orbN, orbR, orbI, orbMode, fold, foldF, norm, diff, spec, specP, fres, edge,
 //  ridge, waveStr, waveF,
@@ -125,6 +130,22 @@ private func sslog(_ msg: String) {
     }
 }
 
+// MARK: - CVDisplayLink callback (C function, no captures)
+
+private func displayLinkCallback(
+    _ displayLink: CVDisplayLink,
+    _ inNow: UnsafePointer<CVTimeStamp>,
+    _ inOutputTime: UnsafePointer<CVTimeStamp>,
+    _ flagsIn: CVOptionFlags,
+    _ flagsOut: UnsafeMutablePointer<CVOptionFlags>,
+    _ context: UnsafeMutableRawPointer?
+) -> CVReturn {
+    guard let context = context else { return kCVReturnError }
+    let view = Unmanaged<MorphScreenSaverView>.fromOpaque(context).takeUnretainedValue()
+    DispatchQueue.main.async { view.renderFrame() }
+    return kCVReturnSuccess
+}
+
 // MARK: - Screen Saver View
 
 @objc(MorphScreenSaverView)
@@ -137,6 +158,9 @@ class MorphScreenSaverView: ScreenSaverView {
     private var uniformBuffer: MTLBuffer?
     private var metalLayer: CAMetalLayer?
 
+    // CVDisplayLink for vsync'd rendering
+    private var displayLink: CVDisplayLink?
+
     // Timing
     private var startTime: CFTimeInterval = 0
 
@@ -148,13 +172,11 @@ class MorphScreenSaverView: ScreenSaverView {
     override init?(frame: NSRect, isPreview: Bool) {
         super.init(frame: frame, isPreview: isPreview)
         sslog("init frame=\(frame) isPreview=\(isPreview)")
-        self.animationTimeInterval = 1.0 / 60.0
         setupMetal()
     }
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
-        self.animationTimeInterval = 1.0 / 60.0
         setupMetal()
     }
 
@@ -178,6 +200,7 @@ class MorphScreenSaverView: ScreenSaverView {
         metalLayer.device = device
         metalLayer.pixelFormat = .bgra8Unorm
         metalLayer.framebufferOnly = true
+        metalLayer.displaySyncEnabled = true
         metalLayer.frame = self.bounds
         metalLayer.contentsScale = NSScreen.main?.backingScaleFactor ?? 2.0
         self.wantsLayer = true
@@ -252,16 +275,54 @@ class MorphScreenSaverView: ScreenSaverView {
         let scale = self.window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2.0
         metalLayer.contentsScale = scale
         metalLayer.frame = self.bounds
-        let w = max(Int(self.bounds.width * scale), 1)
-        let h = max(Int(self.bounds.height * scale), 1)
+        // Half-res: render at RESOLUTION_SCALE of native, bilinear upscaled by the layer
+        let w = max(Int(self.bounds.width * scale * RESOLUTION_SCALE), 1)
+        let h = max(Int(self.bounds.height * scale * RESOLUTION_SCALE), 1)
         metalLayer.drawableSize = CGSize(width: w, height: h)
     }
 
-    // MARK: - Animation
+    // MARK: - Start / Stop via CVDisplayLink
+
+    override func startAnimation() {
+        super.startAnimation()
+        startDisplayLink()
+    }
+
+    override func stopAnimation() {
+        stopDisplayLink()
+        super.stopAnimation()
+    }
+
+    private func startDisplayLink() {
+        guard displayLink == nil else { return }
+        var link: CVDisplayLink?
+        CVDisplayLinkCreateWithActiveCGDisplays(&link)
+        guard let link = link else {
+            sslog("Failed to create CVDisplayLink")
+            return
+        }
+        let selfPtr = Unmanaged.passUnretained(self).toOpaque()
+        CVDisplayLinkSetOutputCallback(link, displayLinkCallback, selfPtr)
+        CVDisplayLinkStart(link)
+        self.displayLink = link
+        sslog("CVDisplayLink started")
+    }
+
+    private func stopDisplayLink() {
+        guard let link = displayLink else { return }
+        CVDisplayLinkStop(link)
+        displayLink = nil
+        sslog("CVDisplayLink stopped")
+    }
+
+    // MARK: - Animation (called from animateOneFrame AND CVDisplayLink)
 
     private var frameCount = 0
 
-    override func animateOneFrame() {
+    // ScreenSaverView's timer still fires — make it a no-op since CVDisplayLink drives rendering
+    override func animateOneFrame() {}
+
+    func renderFrame() {
         frameCount += 1
 
         guard let metalLayer = metalLayer,
@@ -269,15 +330,15 @@ class MorphScreenSaverView: ScreenSaverView {
               let commandQueue = commandQueue,
               let uniformBuffer = uniformBuffer else { return }
 
-        // Update layer size every frame
+        // Update layer size
         let scale = self.window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2.0
         metalLayer.frame = self.bounds
         metalLayer.contentsScale = scale
-        let drawW = max(self.bounds.width * scale, 1)
-        let drawH = max(self.bounds.height * scale, 1)
+        let drawW = max(Int(self.bounds.width * scale * RESOLUTION_SCALE), 1)
+        let drawH = max(Int(self.bounds.height * scale * RESOLUTION_SCALE), 1)
         metalLayer.drawableSize = CGSize(width: drawW, height: drawH)
 
-        if frameCount <= 3 || frameCount % 60 == 0 {
+        if frameCount <= 3 || frameCount % 300 == 0 {
             sslog("frame=\(frameCount) bounds=\(self.bounds) drawableSize=\(metalLayer.drawableSize)")
         }
 

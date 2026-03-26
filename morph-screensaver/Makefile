@@ -60,8 +60,10 @@ $(BUNDLE_DIR): $(SWIFT_SOURCE) $(METAL_SOURCE) Info.plist
 		-output $(MACOS_DIR)/$(PRODUCT_NAME)
 	@rm -f $(BUILD_DIR)/MorphScreenSaver-arm64 $(BUILD_DIR)/MorphScreenSaver-x86_64
 
-	@# Info.plist with correct executable name
-	@sed 's|<string>MorphScreenSaver</string>|<string>$(PRODUCT_NAME)</string>|g' Info.plist > $(CONTENTS_DIR)/Info.plist
+	@# Info.plist with correct executable name and timestamped display name
+	@sed -e 's|<string>MorphScreenSaver</string>|<string>$(PRODUCT_NAME)</string>|g' \
+	     -e 's|<string>Morph Screensaver</string>|<string>Morph $(SUFFIX)</string>|g' \
+	     Info.plist > $(CONTENTS_DIR)/Info.plist
 
 	@# Ad-hoc code sign (required on modern macOS)
 	@codesign --force --sign - $(MACOS_DIR)/$(PRODUCT_NAME)
